@@ -39,11 +39,10 @@ Requires the **service-role key** for the target project in `.env.local`
 
 ```bash
 npm run seed   # (alias: npm run seed:split)
-# Splits ./Typhoon_Electronics_HR_Policy_Manual_v1.md into one document per
-# policy, each as version 1.0, published. Removes the old combined
-# "hr-policy-manual" document if present. Documents created:
-#   preamble-scope-definitions · attendance-leave · travel ·
-#   dress-code · code-of-conduct · equal-opportunity
+# Seeds one document per curated, self-contained markdown file in ./policies/,
+# at version 1.0, published. Documents (stable slugs, updated in place on
+# re-run): attendance-leave · travel · dress-code · code-of-conduct ·
+# equal-opportunity. The filename→title→slug mapping lives in scripts/seed-split.ts.
 ```
 
 Re-running is idempotent (updates v1.0 in place). If the DB has more than one
@@ -64,6 +63,23 @@ markdown, set the version label + effective date + change summary, keep
 **Requires re-sign** on, and publish. The new version becomes current and everyone
 is prompted to sign again. The previous version is archived but its signatures
 remain on record.
+
+## Signed PDF download
+
+After an employee signs, a **signed PDF** (full policy text + an acknowledgement
+page: signer, employee ID, IST timestamp, content hash, IP, device) can be
+downloaded from the document page, the version-history page, or — for any
+employee — the admin compliance table. PDFs are generated **on-demand** from the
+immutable version content + signature row (`@react-pdf/renderer`, no stored
+file). Route: `app/(app)/documents/[id]/signature/[signatureId]/pdf`. Access is
+governed by RLS — employees can only fetch their own; admins/managers any in the org.
+
+## Service accounts
+
+Shared/role mailboxes that aren't individual people are listed in
+[lib/config.ts](lib/config.ts) (`SERVICE_ACCOUNT_EMAILS`, currently
+`admin@typhoonelec.com`). They are excluded from required-signer/compliance
+counts and never prompted to sign.
 
 ## Deploy to Vercel (`tes-policy`)
 

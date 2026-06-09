@@ -53,6 +53,7 @@ export default async function AdminDocumentPage({
               <th className="px-4 py-3 font-semibold">Employee</th>
               <th className="px-4 py-3 font-semibold">Status</th>
               <th className="px-4 py-3 font-semibold">Signed at</th>
+              <th className="px-4 py-3 text-right font-semibold">Document</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -79,12 +80,24 @@ export default async function AdminDocumentPage({
                       })
                     : "—"}
                 </td>
+                <td className="px-4 py-3 text-right">
+                  {s.signatureId ? (
+                    <a
+                      href={`/documents/${id}/signature/${s.signatureId}/pdf`}
+                      className="text-sm font-semibold text-amber-press hover:underline"
+                    >
+                      PDF
+                    </a>
+                  ) : (
+                    <span className="text-sm text-gray-300">—</span>
+                  )}
+                </td>
               </tr>
             ))}
             {total === 0 && (
               <tr>
                 <td
-                  colSpan={3}
+                  colSpan={4}
                   className="px-4 py-8 text-center text-gray-500"
                 >
                   No active employees found.

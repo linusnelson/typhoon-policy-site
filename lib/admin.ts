@@ -1,10 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { isServiceAccount } from "@/lib/config";
 import type { Employee, PolicyDocument, PolicyVersion } from "@/lib/types";
 
 export interface SignerRow {
   employee: Pick<Employee, "id" | "name" | "email">;
   signedAt: string | null;
   signerName: string | null;
+  signatureId: string | null;
 }
 
 export interface ComplianceReport {
@@ -38,23 +40,25 @@ export async function getComplianceForDocument(
     .eq("status", "active")
     .order("name", { ascending: true });
 
-  const activeEmployees = (employees as Pick<
-    Employee,
-    "id" | "name" | "email"
-  >[]) ?? [];
+  // Service mailboxes (e.g. admin@) are not people — exclude from the
+  // required-signer set so compliance counts only real employees.
+  const activeEmployees = (
+    (employees as Pick<Employee, "id" | "name" | "email">[]) ?? []
+  ).filter((e) => !isServiceAccount(e.email));
 
   const signedByEmployee = new Map<
     string,
-    { signedAt: string; signerName: string }
+    { id: string; signedAt: string; signerName: string }
   >();
 
   if (currentVersion) {
     const { data: sigs } = await supabase
       .from("policy_signatures")
-      .select("employee_id, signed_at, signer_name")
+      .select("id, employee_id, signed_at, signer_name")
       .eq("version_id", currentVersion.id);
     for (const s of sigs ?? []) {
       signedByEmployee.set(s.employee_id as string, {
+        id: s.id as string,
         signedAt: s.signed_at as string,
         signerName: s.signer_name as string,
       });
@@ -67,6 +71,7 @@ export async function getComplianceForDocument(
       employee: e,
       signedAt: sig?.signedAt ?? null,
       signerName: sig?.signerName ?? null,
+      signatureId: sig?.id ?? null,
     };
   });
 

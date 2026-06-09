@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { signVersion } from "@/actions/sign";
 import { Button, Card, Input } from "@/components/ui";
+import { SignaturePad } from "@/components/SignaturePad";
 import type { PolicySignature, PolicyVersion } from "@/lib/types";
 
 function formatDateTime(iso: string) {
@@ -14,10 +15,12 @@ function formatDateTime(iso: string) {
 }
 
 export function SignaturePanel({
+  documentId,
   version,
   signature,
   defaultName,
 }: {
+  documentId: string;
   version: PolicyVersion;
   signature: PolicySignature | null;
   defaultName: string;
@@ -25,22 +28,31 @@ export function SignaturePanel({
   const router = useRouter();
   const [agreed, setAgreed] = useState(false);
   const [name, setName] = useState(defaultName);
+  const [drawing, setDrawing] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   if (signature) {
     return (
       <Card className="border-success/30 bg-success-soft p-5">
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 text-success">✓</span>
-          <div>
-            <p className="font-semibold text-[#14532D]">
-              Signed — version {version.version_label}
-            </p>
-            <p className="mt-0.5 text-sm text-[#166534]">
-              {signature.signer_name} · {formatDateTime(signature.signed_at)}
-            </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 text-success">✓</span>
+            <div>
+              <p className="font-semibold text-[#14532D]">
+                Signed — version {version.version_label}
+              </p>
+              <p className="mt-0.5 text-sm text-[#166534]">
+                {signature.signer_name} · {formatDateTime(signature.signed_at)}
+              </p>
+            </div>
           </div>
+          <a
+            href={`/documents/${documentId}/signature/${signature.id}/pdf`}
+            className="rounded-lg bg-offwhite px-3 py-2 text-sm font-semibold text-[#14532D] ring-1 ring-success/30 hover:bg-success-soft"
+          >
+            ↓ Download signed PDF
+          </a>
         </div>
       </Card>
     );
@@ -49,7 +61,7 @@ export function SignaturePanel({
   function onSign() {
     setError(null);
     startTransition(async () => {
-      const res = await signVersion(version.id, name);
+      const res = await signVersion(version.id, name, drawing);
       if (!res.ok) {
         setError(res.error ?? "Could not record your signature.");
         return;
@@ -88,13 +100,20 @@ export function SignaturePanel({
 
       <div className="mt-4">
         <label className="mb-1.5 block text-sm font-medium text-gray-700">
-          Type your full name to sign
+          Type your full name
         </label>
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Your full name"
         />
+      </div>
+
+      <div className="mt-4">
+        <label className="mb-1.5 block text-sm font-medium text-gray-700">
+          Draw your signature
+        </label>
+        <SignaturePad onChange={setDrawing} />
       </div>
 
       {error && (
@@ -105,7 +124,7 @@ export function SignaturePanel({
 
       <Button
         onClick={onSign}
-        disabled={!agreed || name.trim().length < 2 || pending}
+        disabled={!agreed || name.trim().length < 2 || !drawing || pending}
         className="mt-4"
       >
         {pending ? "Signing…" : "Sign & Acknowledge"}

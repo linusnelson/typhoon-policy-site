@@ -44,6 +44,7 @@ export interface PolicySignature {
   employee_id: string;
   signer_name: string;
   signature_method: string;
+  signature_image: string | null;
   content_hash: string;
   ip_address: string | null;
   user_agent: string | null;

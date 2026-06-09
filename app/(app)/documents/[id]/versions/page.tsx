@@ -84,13 +84,21 @@ export default async function VersionsPage({
                 </div>
               </div>
               {sig && (
-                <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-400">
-                  Signed by {sig.signer_name} on{" "}
-                  {new Date(sig.signed_at).toLocaleString("en-IN", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })}
-                </p>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
+                  <p className="text-xs text-gray-400">
+                    Signed by {sig.signer_name} on{" "}
+                    {new Date(sig.signed_at).toLocaleString("en-IN", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </p>
+                  <a
+                    href={`/documents/${id}/signature/${sig.id}/pdf`}
+                    className="text-xs font-semibold text-amber-press hover:underline"
+                  >
+                    ↓ Download signed PDF
+                  </a>
+                </div>
               )}
             </Card>
           );

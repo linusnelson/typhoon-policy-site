@@ -1,14 +1,14 @@
 /**
- * Splits the HR Policy Manual into one signable document per policy and seeds
- * them into the shared ClockBays Supabase DB. Replaces the single combined
- * "hr-policy-manual" document (removed if present — cascades versions/signatures).
+ * Seeds the signable policy documents from the curated, self-contained markdown
+ * files in ./policies/ — one file per document — into the shared ClockBays DB.
+ * Each file already includes its own header, Preamble, Scope, Definitions,
+ * clauses, and Document Control, so it is stored verbatim.
  *
- * Uses the SERVICE-ROLE key (bypasses RLS) — run locally only.
+ * Removes obsolete documents from earlier seeding approaches. Uses the
+ * SERVICE-ROLE key (bypasses RLS) — run locally only.
  *
  *   Env (.env.local): NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
- *   Usage:
- *     npm run seed:split
- *     npm run seed:split -- --org <org_uuid>     # if the DB has >1 org
+ *   Usage: npm run seed   (alias of seed:split)  [-- --org <uuid>]
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -18,10 +18,40 @@ import { createClient } from "@supabase/supabase-js";
 
 config({ path: ".env.local" });
 
-const FILE = "./Typhoon_Electronics_HR_Policy_Manual_v1.md";
+const POLICIES_DIR = "./policies";
 const VERSION = "1.0";
 const EFFECTIVE = "2026-06-01";
-const OLD_COMBINED_SLUG = "hr-policy-manual";
+const OBSOLETE_SLUGS = ["hr-policy-manual", "preamble-scope-definitions"];
+
+// One document per file. Slugs are stable so re-seeding updates in place
+// (and keeps existing signatures/version rows attached to the same document).
+const DOCS: { file: string; title: string; slug: string }[] = [
+  {
+    file: "Typhoon_Electronics_Attendance_and_Leave_Policy.md",
+    title: "Attendance & Leave Policy",
+    slug: "attendance-leave",
+  },
+  {
+    file: "Typhoon_Electronics_Travel_Policy.md",
+    title: "Travel Policy",
+    slug: "travel",
+  },
+  {
+    file: "Typhoon_Electronics_Dress_Code_Policy.md",
+    title: "Dress Code Policy",
+    slug: "dress-code",
+  },
+  {
+    file: "Typhoon_Electronics_Code_of_Conduct.md",
+    title: "Code of Conduct",
+    slug: "code-of-conduct",
+  },
+  {
+    file: "Typhoon_Electronics_Equal_Opportunity_Policy.md",
+    title: "Equal Opportunity & Anti-Discrimination Policy",
+    slug: "equal-opportunity",
+  },
+];
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -34,54 +64,6 @@ function contentHash(md: string): string {
     .digest("hex");
 }
 
-// Split on level-1 ATX headings ("# ", not "## "). Returns sections in order.
-function splitLevel1(md: string): { heading: string; content: string }[] {
-  const parts = md.replace(/\r\n/g, "\n").split(/\n(?=# )/);
-  return parts.map((content) => {
-    const firstLine = content.split("\n", 1)[0] ?? "";
-    return { heading: firstLine, content: content.trim() };
-  });
-}
-
-// Ordered document definitions. `match` predicates select level-1 sections
-// (by heading text) and concatenate them in listed order.
-const DOCUMENTS: {
-  title: string;
-  slug: string;
-  match: ((h: string) => boolean)[];
-}[] = [
-  {
-    title: "Preamble, Scope & Definitions",
-    slug: "preamble-scope-definitions",
-    match: [
-      (h) => h.includes("TYPHOON ELECTRONICS"),
-      (h) => h.includes("DOCUMENT CONTROL"),
-      (h) => h.includes("ITEMS PENDING FINALISATION"),
-    ],
-  },
-  {
-    title: "Attendance & Leave Policy",
-    slug: "attendance-leave",
-    match: [(h) => h.includes("POLICY 1"), (h) => h.includes("ANNEXURE A")],
-  },
-  { title: "Travel Policy", slug: "travel", match: [(h) => h.includes("POLICY 2")] },
-  {
-    title: "Dress Code Policy",
-    slug: "dress-code",
-    match: [(h) => h.includes("POLICY 3")],
-  },
-  {
-    title: "Code of Conduct",
-    slug: "code-of-conduct",
-    match: [(h) => h.includes("POLICY 4")],
-  },
-  {
-    title: "Equal Opportunity & Anti-Discrimination Policy",
-    slug: "equal-opportunity",
-    match: [(h) => h.includes("POLICY 5")],
-  },
-];
-
 async function main() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -90,9 +72,6 @@ async function main() {
       "Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local"
     );
   }
-
-  const md = readFileSync(resolve(FILE), "utf8");
-  const sections = splitLevel1(md);
 
   const db = createClient(url, serviceKey, { auth: { persistSession: false } });
 
@@ -114,28 +93,25 @@ async function main() {
     console.log(`Using org ${orgId} (${orgs[0].name})`);
   }
 
-  // Remove the old combined document (cascades versions + signatures).
-  const { data: oldDoc } = await db
-    .from("policy_documents")
-    .select("id")
-    .eq("org_id", orgId)
-    .eq("slug", OLD_COMBINED_SLUG)
-    .maybeSingle();
-  if (oldDoc) {
-    await db.from("policy_documents").delete().eq("id", oldDoc.id);
-    console.log(`Removed combined document "${OLD_COMBINED_SLUG}"`);
+  // Remove obsolete documents from prior seeding approaches.
+  for (const slug of OBSOLETE_SLUGS) {
+    const { data } = await db
+      .from("policy_documents")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("slug", slug)
+      .maybeSingle();
+    if (data) {
+      await db.from("policy_documents").delete().eq("id", data.id);
+      console.log(`Removed obsolete document "${slug}"`);
+    }
   }
 
-  for (const def of DOCUMENTS) {
-    const content = def.match
-      .map((pred) => sections.find((s) => pred(s.heading))?.content ?? "")
-      .filter(Boolean)
-      .join("\n\n");
-
-    if (!content) {
-      console.warn(`!! No content matched for "${def.title}" — skipping`);
-      continue;
-    }
+  for (const def of DOCS) {
+    const content = readFileSync(
+      resolve(POLICIES_DIR, def.file),
+      "utf8"
+    ).trim();
     const hash = contentHash(content);
 
     // Upsert document by (org_id, slug).
@@ -148,6 +124,11 @@ async function main() {
       .maybeSingle();
     if (existingDoc) {
       documentId = existingDoc.id;
+      // Keep the stored title in sync.
+      await db
+        .from("policy_documents")
+        .update({ title: def.title })
+        .eq("id", documentId);
     } else {
       const { data, error } = await db
         .from("policy_documents")
@@ -159,13 +140,6 @@ async function main() {
     }
 
     // Upsert version 1.0.
-    let versionId: string;
-    const { data: existingVersion } = await db
-      .from("policy_versions")
-      .select("id")
-      .eq("document_id", documentId)
-      .eq("version_label", VERSION)
-      .maybeSingle();
     const versionFields = {
       content_md: content,
       content_hash: hash,
@@ -174,6 +148,13 @@ async function main() {
       status: "published" as const,
       published_at: new Date().toISOString(),
     };
+    let versionId: string;
+    const { data: existingVersion } = await db
+      .from("policy_versions")
+      .select("id")
+      .eq("document_id", documentId)
+      .eq("version_label", VERSION)
+      .maybeSingle();
     if (existingVersion) {
       versionId = existingVersion.id;
       const { error } = await db
@@ -202,13 +183,13 @@ async function main() {
       .update({ current_version_id: versionId })
       .eq("id", documentId);
 
-    console.log(`✓ ${def.title}  (${def.slug})  ${content.length} chars`);
+    console.log(`✓ ${def.title.padEnd(48)} (${def.slug})  ${content.length} chars`);
   }
 
-  console.log(`\n✅ Seeded ${DOCUMENTS.length} policy documents`);
+  console.log(`\n✅ Seeded ${DOCS.length} policy documents from ${POLICIES_DIR}/`);
 }
 
 main().catch((err) => {
-  console.error("Split seed failed:", err.message ?? err);
+  console.error("Seed failed:", err.message ?? err);
   process.exit(1);
 });

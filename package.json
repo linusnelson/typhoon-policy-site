@@ -12,6 +12,7 @@
     "seed:single": "tsx scripts/seed-policy.ts"
   },
   "dependencies": {
+    "@react-pdf/renderer": "^4.1.6",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.45.4",
     "next": "^15.5.19",
@@ -19,7 +20,9 @@
     "react-dom": "19.0.0",
     "react-markdown": "^9.0.1",
     "rehype-sanitize": "^6.0.0",
-    "remark-gfm": "^4.0.0"
+    "remark-gfm": "^4.0.0",
+    "remark-parse": "^11.0.0",
+    "unified": "^11.0.5"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.15",

@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { getCurrentEmployee, getDocumentsWithStatus } from "@/lib/policies";
 import { Badge, Banner, Card } from "@/components/ui";
+import { isServiceAccount } from "@/lib/config";
 import type { DocumentWithStatus } from "@/lib/types";
 
 export default async function DashboardPage() {
   const employee = (await getCurrentEmployee())!; // layout guarantees presence
   const docs = await getDocumentsWithStatus(employee);
 
-  const pending = docs.filter(
-    (d) => d.currentVersion && !d.signature
-  );
+  const isService = isServiceAccount(employee.email);
+  const pending = docs.filter((d) => d.currentVersion && !d.signature);
 
   return (
     <div className="space-y-6">
@@ -22,7 +22,12 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {pending.length > 0 ? (
+      {isService ? (
+        <Banner tone="info">
+          This is a service account — signing is not required. You can read all
+          documents below.
+        </Banner>
+      ) : pending.length > 0 ? (
         <Banner tone="warning">
           You have {pending.length} document
           {pending.length > 1 ? "s" : ""} awaiting your signature.
@@ -40,14 +45,20 @@ export default async function DashboardPage() {
           </Card>
         )}
         {docs.map((d) => (
-          <DocumentRow key={d.document.id} item={d} />
+          <DocumentRow key={d.document.id} item={d} isService={isService} />
         ))}
       </div>
     </div>
   );
 }
 
-function DocumentRow({ item }: { item: DocumentWithStatus }) {
+function DocumentRow({
+  item,
+  isService,
+}: {
+  item: DocumentWithStatus;
+  isService: boolean;
+}) {
   const { document, currentVersion, signature } = item;
   return (
     <Link href={`/documents/${document.id}`} className="block">
@@ -71,6 +82,8 @@ function DocumentRow({ item }: { item: DocumentWithStatus }) {
           <div className="shrink-0">
             {!currentVersion ? (
               <Badge tone="neutral">Draft</Badge>
+            ) : isService ? (
+              <Badge tone="neutral">Published</Badge>
             ) : signature ? (
               <Badge tone="success">Signed</Badge>
             ) : (

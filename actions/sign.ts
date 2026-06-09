@@ -15,11 +15,24 @@ export interface SignResult {
 // copies the version's content_hash so the signature binds to the exact text.
 export async function signVersion(
   versionId: string,
-  signerName: string
+  signerName: string,
+  signatureImage?: string | null
 ): Promise<SignResult> {
   const name = signerName.trim();
   if (name.length < 2) {
     return { ok: false, error: "Please type your full name to sign." };
+  }
+
+  // Optional drawn-signature image: must be a small PNG data URL.
+  let image: string | null = null;
+  if (signatureImage) {
+    if (!signatureImage.startsWith("data:image/png;base64,")) {
+      return { ok: false, error: "Invalid signature image." };
+    }
+    if (signatureImage.length > 1_500_000) {
+      return { ok: false, error: "Signature image is too large." };
+    }
+    image = signatureImage;
   }
 
   const supabase = await createClient();
@@ -51,7 +64,9 @@ export async function signVersion(
 
   const hdrs = await headers();
   const forwarded = hdrs.get("x-forwarded-for");
-  const ip = forwarded ? forwarded.split(",")[0].trim() : null;
+  let ip = forwarded?.split(",")[0].trim() || hdrs.get("x-real-ip") || null;
+  // Strip IPv4-mapped-IPv6 prefix (e.g. ::ffff:49.207.1.2 -> 49.207.1.2).
+  if (ip?.startsWith("::ffff:")) ip = ip.slice(7);
   const userAgent = hdrs.get("user-agent");
 
   const { error } = await supabase.from("policy_signatures").insert({
@@ -60,7 +75,8 @@ export async function signVersion(
     version_id: version.id,
     employee_id: employee.id,
     signer_name: name,
-    signature_method: "typed",
+    signature_method: image ? "drawn" : "typed",
+    signature_image: image,
     content_hash: version.content_hash,
     ip_address: ip,
     user_agent: userAgent,

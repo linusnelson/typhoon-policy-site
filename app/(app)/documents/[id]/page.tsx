@@ -9,6 +9,7 @@ import {
 import { Badge, Card } from "@/components/ui";
 import { PolicyMarkdown } from "@/components/PolicyMarkdown";
 import { SignaturePanel } from "@/components/SignaturePanel";
+import { isServiceAccount } from "@/lib/config";
 
 export default async function DocumentPage({
   params,
@@ -83,11 +84,18 @@ export default async function DocumentPage({
             <PolicyMarkdown content={currentVersion.content_md} />
           </Card>
 
-          <SignaturePanel
-            version={currentVersion}
-            signature={signature}
-            defaultName={employee.name}
-          />
+          {isServiceAccount(employee.email) ? (
+            <Card className="p-5 text-sm text-gray-600">
+              This is a service account — signing is not required.
+            </Card>
+          ) : (
+            <SignaturePanel
+              documentId={id}
+              version={currentVersion}
+              signature={signature}
+              defaultName={employee.name}
+            />
+          )}
         </>
       )}
     </div>
