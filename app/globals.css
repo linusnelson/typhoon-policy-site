@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  background-color: #FAFAF9; /* gray-50 — scaffold background */
+  color: #0A0A0A;            /* ink */
+}
+
+/* ── Genbays-themed prose for rendered policy markdown ──────────────────────── */
+.prose-genbays {
+  --tw-prose-body: #363632;          /* gray-700 */
+  --tw-prose-headings: #0A0A0A;      /* ink */
+  --tw-prose-links: #E0930A;         /* amber-press */
+  --tw-prose-bold: #0A0A0A;
+  --tw-prose-bullets: #A3A39C;       /* gray-400 */
+  --tw-prose-hr: #E7E7E3;            /* gray-200 */
+  --tw-prose-quotes: #52524D;        /* gray-600 */
+  --tw-prose-quote-borders: #F8A71B; /* amber */
+  --tw-prose-th-borders: #D1D1CC;    /* gray-300 */
+  --tw-prose-td-borders: #E7E7E3;    /* gray-200 */
+  max-width: none;
+}
+
+.prose-genbays h1,
+.prose-genbays h2,
+.prose-genbays h3 {
+  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+.prose-genbays table {
+  font-size: 0.875rem;
+}
+
+.prose-genbays thead {
+  background-color: #F4F4F2; /* gray-100 */
+}
