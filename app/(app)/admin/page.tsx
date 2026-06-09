@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getAllDocuments, getComplianceForDocument } from "@/lib/admin";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Button, Card } from "@/components/ui";
 
 export default async function AdminDashboardPage() {
   const documents = await getAllDocuments();
@@ -10,19 +10,24 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-ink">
-          Compliance
-        </h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Signature status for the current version of each document.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-ink">
+            Compliance
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Signature status for the current version of each document.
+          </p>
+        </div>
+        <Link href="/admin/documents/new">
+          <Button>New document</Button>
+        </Link>
       </div>
 
       <div className="space-y-3">
         {reports.length === 0 && (
           <Card className="p-8 text-center text-sm text-gray-500">
-            No documents yet. Seed the manual or create one in Supabase.
+            No documents yet. Use “New document” to create one.
           </Card>
         )}
         {reports.map((r) => {
