@@ -4,43 +4,37 @@ import { Text, View, Link, StyleSheet } from "@react-pdf/renderer";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
 import remarkGfm from "remark-gfm";
+import { PDF } from "./theme";
 
 // Converts policy markdown (GFM, incl. tables) into @react-pdf primitives.
-// Default Helvetica family; Genbays colours applied via styles.
-
-const INK = "#0A0A0A";
-const GRAY700 = "#363632";
-const GRAY500 = "#72726C";
-const GRAY200 = "#E7E7E3";
-const GRAY100 = "#F4F4F2";
-const AMBER = "#F8A71B";
+// Default Helvetica family; Typhoon design-system colours applied via styles.
 
 const s = StyleSheet.create({
-  h1: { fontSize: 17, fontFamily: "Helvetica-Bold", color: INK, marginTop: 14, marginBottom: 6 },
-  h2: { fontSize: 13, fontFamily: "Helvetica-Bold", color: INK, marginTop: 12, marginBottom: 5 },
-  h3: { fontSize: 11, fontFamily: "Helvetica-Bold", color: INK, marginTop: 9, marginBottom: 4 },
-  h4: { fontSize: 10, fontFamily: "Helvetica-Bold", color: GRAY700, marginTop: 7, marginBottom: 3 },
-  para: { fontSize: 10, color: GRAY700, lineHeight: 1.5, marginBottom: 6 },
+  h1: { fontSize: 17, fontFamily: "Helvetica-Bold", color: PDF.ink, marginTop: 14, marginBottom: 6 },
+  h2: { fontSize: 13, fontFamily: "Helvetica-Bold", color: PDF.ink, marginTop: 12, marginBottom: 5 },
+  h3: { fontSize: 11, fontFamily: "Helvetica-Bold", color: PDF.ink, marginTop: 9, marginBottom: 4 },
+  h4: { fontSize: 10, fontFamily: "Helvetica-Bold", color: PDF.gray700, marginTop: 7, marginBottom: 3 },
+  para: { fontSize: 10, color: PDF.gray700, lineHeight: 1.5, marginBottom: 6 },
   listRow: { flexDirection: "row", marginBottom: 3, paddingLeft: 8 },
-  bullet: { fontSize: 10, color: GRAY500, width: 16 },
+  bullet: { fontSize: 10, color: PDF.gray500, width: 16 },
   listItemBody: { flex: 1 },
-  listItemText: { fontSize: 10, color: GRAY700, lineHeight: 1.5 },
-  hr: { borderBottomWidth: 1, borderBottomColor: GRAY200, marginVertical: 10 },
-  codeBlock: { backgroundColor: GRAY100, padding: 6, borderRadius: 4, marginBottom: 6 },
-  codeText: { fontFamily: "Courier", fontSize: 9, color: GRAY700 },
-  quote: { borderLeftWidth: 3, borderLeftColor: AMBER, paddingLeft: 8, marginBottom: 6 },
-  table: { borderWidth: 1, borderColor: GRAY200, borderRadius: 4, marginBottom: 8 },
+  listItemText: { fontSize: 10, color: PDF.gray700, lineHeight: 1.5 },
+  hr: { borderBottomWidth: 1, borderBottomColor: PDF.gray200, marginVertical: 10 },
+  codeBlock: { backgroundColor: PDF.gray100, padding: 6, borderRadius: 4, marginBottom: 6 },
+  codeText: { fontFamily: "Courier", fontSize: 9, color: PDF.gray700 },
+  quote: { borderLeftWidth: 3, borderLeftColor: PDF.brand, paddingLeft: 8, marginBottom: 6 },
+  table: { borderWidth: 1, borderColor: PDF.gray200, borderRadius: 4, marginBottom: 8 },
   tableRow: { flexDirection: "row" },
-  tableRowBorder: { borderTopWidth: 1, borderTopColor: GRAY200 },
-  th: { flex: 1, padding: 5, backgroundColor: GRAY100 },
-  thText: { fontSize: 9, fontFamily: "Helvetica-Bold", color: INK },
-  td: { flex: 1, padding: 5, borderLeftWidth: 1, borderLeftColor: GRAY200 },
+  tableRowBorder: { borderTopWidth: 1, borderTopColor: PDF.gray200 },
+  th: { flex: 1, padding: 5, backgroundColor: PDF.gray100 },
+  thText: { fontSize: 9, fontFamily: "Helvetica-Bold", color: PDF.ink },
+  td: { flex: 1, padding: 5, borderLeftWidth: 1, borderLeftColor: PDF.gray200 },
   tdFirst: { flex: 1, padding: 5 },
-  cellText: { fontSize: 9, color: GRAY700, lineHeight: 1.4 },
+  cellText: { fontSize: 9, color: PDF.gray700, lineHeight: 1.4 },
   strong: { fontFamily: "Helvetica-Bold" },
   em: { fontFamily: "Helvetica-Oblique" },
   code: { fontFamily: "Courier" },
-  link: { color: "#E0930A", textDecoration: "none" },
+  link: { color: PDF.brand, textDecoration: "none" },
 });
 
 // ── Inline nodes → React text spans ─────────────────────────────────────────

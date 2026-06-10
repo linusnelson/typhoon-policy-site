@@ -1,35 +1,31 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
 import { markdownToPdf } from "./mdast-to-pdf";
-
-const INK = "#0A0A0A";
-const GRAY500 = "#72726C";
-const GRAY200 = "#E7E7E3";
-const AMBER = "#F8A71B";
+import { PDF } from "./theme";
 
 const s = StyleSheet.create({
   page: { paddingTop: 48, paddingBottom: 56, paddingHorizontal: 48 },
   band: {
     borderBottomWidth: 2,
-    borderBottomColor: AMBER,
+    borderBottomColor: PDF.brand,
     paddingBottom: 10,
     marginBottom: 16,
   },
-  company: { fontSize: 9, fontFamily: "Helvetica-Bold", color: AMBER, letterSpacing: 1 },
-  docTitle: { fontSize: 20, fontFamily: "Helvetica-Bold", color: INK, marginTop: 4 },
-  meta: { fontSize: 9, color: GRAY500, marginTop: 4 },
-  ackTitle: { fontSize: 13, fontFamily: "Helvetica-Bold", color: INK, marginBottom: 10 },
-  ackIntro: { fontSize: 10, color: "#363632", lineHeight: 1.5, marginBottom: 14 },
-  ackBox: { borderWidth: 1, borderColor: GRAY200, borderRadius: 6, padding: 14 },
+  company: { fontSize: 9, fontFamily: "Helvetica-Bold", color: PDF.brand, letterSpacing: 1 },
+  docTitle: { fontSize: 20, fontFamily: "Helvetica-Bold", color: PDF.ink, marginTop: 4 },
+  meta: { fontSize: 9, color: PDF.gray500, marginTop: 4 },
+  ackTitle: { fontSize: 13, fontFamily: "Helvetica-Bold", color: PDF.ink, marginBottom: 10 },
+  ackIntro: { fontSize: 10, color: PDF.gray700, lineHeight: 1.5, marginBottom: 14 },
+  ackBox: { borderWidth: 1, borderColor: PDF.gray200, borderRadius: 6, padding: 14 },
   row: { flexDirection: "row", marginBottom: 7 },
-  label: { width: 130, fontSize: 9, color: GRAY500 },
-  value: { flex: 1, fontSize: 9, fontFamily: "Helvetica-Bold", color: INK },
-  mono: { flex: 1, fontSize: 8, fontFamily: "Courier", color: INK },
+  label: { width: 130, fontSize: 9, color: PDF.gray500 },
+  value: { flex: 1, fontSize: 9, fontFamily: "Helvetica-Bold", color: PDF.ink },
+  mono: { flex: 1, fontSize: 8, fontFamily: "Courier", color: PDF.ink },
   sigBlock: { marginTop: 18 },
-  sigLabel: { fontSize: 9, color: GRAY500, marginBottom: 4 },
+  sigLabel: { fontSize: 9, color: PDF.gray500, marginBottom: 4 },
   sigImageBox: {
     borderWidth: 1,
-    borderColor: GRAY200,
+    borderColor: PDF.gray200,
     borderRadius: 6,
     padding: 8,
     width: 240,
@@ -37,14 +33,14 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   sigImage: { objectFit: "contain", maxHeight: 90 },
-  sigName: { fontSize: 9, color: INK, marginTop: 5, fontFamily: "Helvetica-Bold" },
+  sigName: { fontSize: 9, color: PDF.ink, marginTop: 5, fontFamily: "Helvetica-Bold" },
   footer: {
     position: "absolute",
     bottom: 28,
     left: 48,
     right: 48,
     fontSize: 7.5,
-    color: GRAY500,
+    color: PDF.gray500,
     textAlign: "center",
   },
 });

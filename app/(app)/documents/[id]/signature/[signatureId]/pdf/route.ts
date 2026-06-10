@@ -49,7 +49,7 @@ export async function GET(
 
   const buffer = await renderToBuffer(
     PolicyPdf({
-      companyName: org?.name ?? "Typhoon Electronics",
+      companyName: org?.name ?? "Typhoon Electronic Solutions",
       documentTitle: document.title,
       versionLabel: version.version_label,
       effectiveDate: version.effective_date,
