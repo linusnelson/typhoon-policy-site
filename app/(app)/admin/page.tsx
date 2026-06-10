@@ -60,7 +60,7 @@ export default async function AdminDashboardPage() {
                 </div>
                 <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
                   <div
-                    className="h-full rounded-full bg-amber"
+                    className="h-full rounded-full bg-brand"
                     style={{ width: `${pct}%` }}
                   />
                 </div>

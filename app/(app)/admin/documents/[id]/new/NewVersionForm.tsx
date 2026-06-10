@@ -74,7 +74,7 @@ export function NewVersionForm({
               type="checkbox"
               checked={requiresResign}
               onChange={(e) => setRequiresResign(e.target.checked)}
-              className="h-4 w-4 accent-[#F8A71B]"
+              className="h-4 w-4 accent-brand"
             />
             Requires re-sign
           </label>
@@ -100,7 +100,7 @@ export function NewVersionForm({
           <button
             type="button"
             onClick={() => setPreview((p) => !p)}
-            className="text-sm font-medium text-amber-press hover:underline"
+            className="text-sm font-medium text-brand hover:underline"
           >
             {preview ? "Edit" : "Preview"}
           </button>

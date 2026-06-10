@@ -41,7 +41,7 @@ function AccessDenied({ reason }: { reason: "no-account" | "inactive" }) {
         <form action="/auth/signout" method="post">
           <button
             type="submit"
-            className="text-sm font-semibold text-amber-press hover:underline"
+            className="text-sm font-semibold text-brand hover:underline"
           >
             Sign out
           </button>

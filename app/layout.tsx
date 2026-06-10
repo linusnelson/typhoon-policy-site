@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Open_Sans } from "next/font/google";
+import { Space_Grotesk, Open_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 const spaceGrotesk = Space_Grotesk({
@@ -16,8 +16,16 @@ const openSans = Open_Sans({
   display: "swap",
 });
 
+// JetBrains Mono carries IDs, hashes, timestamps, and metrics with tabular numerals.
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--font-jetbrains-mono",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "Typhoon Electronics — Policies",
+  title: "Typhoon Electronic Solutions — Policies",
   description: "Company policy manual and digital acknowledgements",
 };
 
@@ -27,7 +35,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${spaceGrotesk.variable} ${openSans.variable}`}>
+    <html
+      lang="en"
+      className={`${spaceGrotesk.variable} ${openSans.variable} ${jetBrainsMono.variable}`}
+    >
       <body className="font-sans antialiased">{children}</body>
     </html>
   );

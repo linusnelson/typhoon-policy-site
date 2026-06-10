@@ -7,36 +7,51 @@
 }
 
 body {
-  background-color: #FAFAF9; /* gray-50 — scaffold background */
-  color: #0A0A0A;            /* ink */
+  background-color: #FBFAFB; /* bg-0 — warm paper scaffold */
+  color: #181520;            /* ink — near-black plum */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Genbays-themed prose for rendered policy markdown ──────────────────────── */
-.prose-genbays {
-  --tw-prose-body: #363632;          /* gray-700 */
-  --tw-prose-headings: #0A0A0A;      /* ink */
-  --tw-prose-links: #E0930A;         /* amber-press */
-  --tw-prose-bold: #0A0A0A;
-  --tw-prose-bullets: #A3A39C;       /* gray-400 */
-  --tw-prose-hr: #E7E7E3;            /* gray-200 */
-  --tw-prose-quotes: #52524D;        /* gray-600 */
-  --tw-prose-quote-borders: #F8A71B; /* amber */
-  --tw-prose-th-borders: #D1D1CC;    /* gray-300 */
-  --tw-prose-td-borders: #E7E7E3;    /* gray-200 */
+/* 3px brand focus ring on every interactive element (design: shadow-ring). */
+*:focus-visible {
+  outline: none;
+}
+
+/* ── Typhoon-themed prose for rendered policy markdown ──────────────────────── */
+.prose-typhoon {
+  --tw-prose-body: #343037;          /* gray-700 */
+  --tw-prose-headings: #181520;      /* ink */
+  --tw-prose-links: #6C1262;         /* brand purple */
+  --tw-prose-bold: #181520;
+  --tw-prose-bullets: #A099A3;       /* gray-400 */
+  --tw-prose-hr: #E6E1E7;            /* gray-200 */
+  --tw-prose-quotes: #4F4952;        /* gray-600 */
+  --tw-prose-quote-borders: #6C1262; /* brand purple */
+  --tw-prose-th-borders: #CFC8D1;    /* gray-300 */
+  --tw-prose-td-borders: #E6E1E7;    /* gray-200 */
+  --tw-prose-code: #181520;
   max-width: none;
 }
 
-.prose-genbays h1,
-.prose-genbays h2,
-.prose-genbays h3 {
+.prose-typhoon h1,
+.prose-typhoon h2,
+.prose-typhoon h3 {
   font-family: var(--font-space-grotesk), system-ui, sans-serif;
   letter-spacing: -0.02em;
 }
 
-.prose-genbays table {
+.prose-typhoon table {
   font-size: 0.875rem;
 }
 
-.prose-genbays thead {
-  background-color: #F4F4F2; /* gray-100 */
+.prose-typhoon thead {
+  background-color: #F3F0F3; /* gray-100 */
+}
+
+/* Part numbers, hashes, and IDs render in mono with tabular numerals. */
+.prose-typhoon code,
+.prose-typhoon kbd {
+  font-family: var(--font-jetbrains-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
 }

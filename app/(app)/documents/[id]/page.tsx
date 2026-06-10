@@ -46,7 +46,7 @@ export default async function DocumentPage({
           </h1>
           {currentVersion && (
             <div className="mt-2 flex items-center gap-2">
-              <Badge tone="amber">v{currentVersion.version_label}</Badge>
+              <Badge tone="brand">v{currentVersion.version_label}</Badge>
               {currentVersion.effective_date && (
                 <span className="text-sm text-gray-500">
                   Effective{" "}
@@ -61,7 +61,7 @@ export default async function DocumentPage({
         </div>
         <Link
           href={`/documents/${id}/versions`}
-          className="shrink-0 text-sm font-medium text-amber-press hover:underline"
+          className="shrink-0 text-sm font-medium text-brand hover:underline"
         >
           Version history
         </Link>
@@ -74,7 +74,7 @@ export default async function DocumentPage({
       ) : (
         <>
           {currentVersion.change_summary && (
-            <Card className="border-amber/30 bg-amber-soft p-4 text-sm text-[#7a5300]">
+            <Card className="border-brand/20 bg-brand-soft p-4 text-sm text-brand">
               <span className="font-semibold">What changed: </span>
               {currentVersion.change_summary}
             </Card>

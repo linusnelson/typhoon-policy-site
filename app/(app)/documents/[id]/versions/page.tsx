@@ -60,7 +60,7 @@ export default async function VersionsPage({
                     <span className="font-display text-lg font-bold text-ink">
                       v{v.version_label}
                     </span>
-                    {isCurrent && <Badge tone="amber">Current</Badge>}
+                    {isCurrent && <Badge tone="brand">Current</Badge>}
                     {v.status === "archived" && (
                       <Badge tone="neutral">Archived</Badge>
                     )}
@@ -94,7 +94,7 @@ export default async function VersionsPage({
                   </p>
                   <a
                     href={`/documents/${id}/signature/${sig.id}/pdf`}
-                    className="text-xs font-semibold text-amber-press hover:underline"
+                    className="text-xs font-semibold text-brand hover:underline"
                   >
                     ↓ Download signed PDF
                   </a>

@@ -15,7 +15,7 @@ export function Card({
   return (
     <div
       className={cx(
-        "rounded-card border border-gray-200 bg-offwhite",
+        "rounded-card border border-gray-200 bg-white shadow-sm",
         className
       )}
     >
@@ -36,12 +36,14 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-brand/30 disabled:cursor-not-allowed disabled:opacity-40";
   const variants: Record<string, string> = {
-    primary: "bg-amber text-ink hover:bg-amber-hover active:bg-amber-press",
-    secondary: "bg-gray-100 text-ink hover:bg-gray-200",
+    primary:
+      "bg-brand text-brand-fg shadow-sm hover:bg-brand-hover hover:shadow-accent active:bg-brand-press active:shadow-sm",
+    secondary:
+      "border border-gray-300 bg-white text-ink hover:border-ink",
     ghost: "bg-transparent text-gray-700 hover:bg-gray-100",
-    danger: "bg-danger text-offwhite hover:opacity-90",
+    danger: "bg-danger text-white hover:opacity-90",
   };
   return (
     <button className={cx(base, variants[variant], className)} {...rest}>
@@ -60,7 +62,7 @@ export const Input = React.forwardRef<
       ref={ref}
       className={cx(
         "w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-ink",
-        "placeholder:text-gray-400 focus:border-amber focus:outline-none focus:ring-2 focus:ring-amber/30",
+        "placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/30",
         className
       )}
       {...rest}
@@ -78,7 +80,7 @@ export const Textarea = React.forwardRef<
       ref={ref}
       className={cx(
         "w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-ink",
-        "placeholder:text-gray-400 focus:border-amber focus:outline-none focus:ring-2 focus:ring-amber/30",
+        "placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/30",
         className
       )}
       {...rest}
@@ -87,7 +89,7 @@ export const Textarea = React.forwardRef<
 });
 
 // ── Badge ─────────────────────────────────────────────────────────────────
-type Tone = "neutral" | "success" | "warning" | "danger" | "info" | "amber";
+type Tone = "neutral" | "success" | "warning" | "danger" | "info" | "brand";
 
 export function Badge({
   tone = "neutral",
@@ -98,11 +100,11 @@ export function Badge({
 }) {
   const tones: Record<Tone, string> = {
     neutral: "bg-gray-100 text-gray-600",
-    success: "bg-success-soft text-success",
-    warning: "bg-warning-soft text-[#92400E]",
-    danger: "bg-danger-soft text-danger",
-    info: "bg-info-soft text-info",
-    amber: "bg-amber-soft text-amber-press",
+    success: "bg-success-soft text-success-deep",
+    warning: "bg-warning-soft text-warning-deep",
+    danger: "bg-danger-soft text-danger-deep",
+    info: "bg-info-soft text-info-deep",
+    brand: "bg-brand-soft text-brand",
   };
   return (
     <span
@@ -125,9 +127,9 @@ export function Banner({
   children: React.ReactNode;
 }) {
   const tones = {
-    info: "border-info/30 bg-info-soft text-[#1E3A8A]",
-    warning: "border-warning/40 bg-warning-soft text-[#92400E]",
-    success: "border-success/30 bg-success-soft text-[#14532D]",
+    info: "border-info/30 bg-info-soft text-info-deep",
+    warning: "border-warning/40 bg-warning-soft text-warning-deep",
+    success: "border-success/30 bg-success-soft text-success-deep",
   };
   return (
     <div

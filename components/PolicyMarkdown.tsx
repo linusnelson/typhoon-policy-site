@@ -3,10 +3,10 @@ import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 
 // Renders policy markdown (GFM tables supported) with sanitisation, themed via
-// the .prose-genbays styles in globals.css.
+// the .prose-typhoon styles in globals.css.
 export function PolicyMarkdown({ content }: { content: string }) {
   return (
-    <article className="prose prose-genbays prose-sm sm:prose-base">
+    <article className="prose prose-typhoon prose-sm sm:prose-base">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSanitize]}

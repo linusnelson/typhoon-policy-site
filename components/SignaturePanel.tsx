@@ -39,17 +39,20 @@ export function SignaturePanel({
           <div className="flex items-start gap-3">
             <span className="mt-0.5 text-success">✓</span>
             <div>
-              <p className="font-semibold text-[#14532D]">
+              <p className="font-semibold text-success-deep">
                 Signed — version {version.version_label}
               </p>
-              <p className="mt-0.5 text-sm text-[#166534]">
-                {signature.signer_name} · {formatDateTime(signature.signed_at)}
+              <p className="mt-0.5 text-sm text-success-deep">
+                {signature.signer_name} ·{" "}
+                <span className="font-mono tabular-nums">
+                  {formatDateTime(signature.signed_at)}
+                </span>
               </p>
             </div>
           </div>
           <a
             href={`/documents/${documentId}/signature/${signature.id}/pdf`}
-            className="rounded-lg bg-offwhite px-3 py-2 text-sm font-semibold text-[#14532D] ring-1 ring-success/30 hover:bg-success-soft"
+            className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-success-deep ring-1 ring-success/30 hover:bg-success-soft"
           >
             ↓ Download signed PDF
           </a>
@@ -90,7 +93,7 @@ export function SignaturePanel({
           type="checkbox"
           checked={agreed}
           onChange={(e) => setAgreed(e.target.checked)}
-          className="mt-0.5 h-4 w-4 accent-[#F8A71B]"
+          className="mt-0.5 h-4 w-4 accent-brand"
         />
         <span>
           I have read and understood this policy document, and I agree to comply

@@ -84,7 +84,7 @@ export default async function AdminDocumentPage({
                   {s.signatureId ? (
                     <a
                       href={`/documents/${id}/signature/${s.signatureId}/pdf`}
-                      className="text-sm font-semibold text-amber-press hover:underline"
+                      className="text-sm font-semibold text-brand hover:underline"
                     >
                       PDF
                     </a>

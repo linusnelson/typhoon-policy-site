@@ -34,7 +34,7 @@ export function SignaturePad({
       ctx.lineWidth = 2;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.strokeStyle = "#0A0A0A";
+      ctx.strokeStyle = "#181520";
     };
     setup();
 
