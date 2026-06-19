@@ -123,13 +123,14 @@ export function Banner({
   tone = "info",
   children,
 }: {
-  tone?: "info" | "warning" | "success";
+  tone?: "info" | "warning" | "success" | "danger";
   children: React.ReactNode;
 }) {
   const tones = {
     info: "border-info/30 bg-info-soft text-info-deep",
     warning: "border-warning/40 bg-warning-soft text-warning-deep",
     success: "border-success/30 bg-success-soft text-success-deep",
+    danger: "border-danger/30 bg-danger-soft text-danger-deep",
   };
   return (
     <div

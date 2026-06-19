@@ -94,5 +94,6 @@ export async function createDocument(
 
   revalidatePath("/");
   revalidatePath("/admin");
+  revalidatePath("/admin/policies");
   return { ok: true, documentId: doc.id };
 }

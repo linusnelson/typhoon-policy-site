@@ -104,6 +104,7 @@ export async function publishVersion(
 
   revalidatePath("/");
   revalidatePath("/admin");
+  revalidatePath("/admin/policies");
   revalidatePath(`/documents/${document.id}`);
   revalidatePath(`/documents/${document.id}/versions`);
   return { ok: true, versionId: inserted.id };
