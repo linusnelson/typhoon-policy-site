@@ -44,3 +44,22 @@ export async function requireManagerView(): Promise<Employee> {
   if (employee.role !== "manager" && employee.role !== "admin") redirect("/");
   return employee;
 }
+
+// Accounts users (employees.is_expense_approver) approve/reimburse expense
+// claims. Admins always qualify as the fallback approver.
+export async function requireExpenseApprover(): Promise<Employee> {
+  const employee = await requireEmployee();
+  if (employee.role !== "admin" && !employee.is_expense_approver) {
+    throw new AuthzError("Expense approver access required.");
+  }
+  return employee;
+}
+
+// Page-guard variant for /expenses/approvals (lives OUTSIDE /admin because
+// accounts users are usually not admins and the admin layout bounces them).
+export async function requireExpenseApproverView(): Promise<Employee> {
+  const employee = await getCurrentEmployee();
+  if (!employee || employee.status !== "active") redirect("/login");
+  if (employee.role !== "admin" && !employee.is_expense_approver) redirect("/");
+  return employee;
+}

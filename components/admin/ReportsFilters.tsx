@@ -10,6 +10,7 @@ const TYPES: { key: ReportType; label: string }[] = [
   { key: "daily", label: "Daily" },
   { key: "weekly", label: "Weekly" },
   { key: "monthly", label: "Monthly" },
+  { key: "muster", label: "Muster" },
   { key: "visits", label: "Visits" },
   { key: "events", label: "Events" },
 ];
@@ -43,48 +44,62 @@ function addDays(key: string, n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+type FilterState = {
+  type: ReportType;
+  from: string;
+  to: string;
+  month: number;
+  year: number;
+  dept: string;
+  loc: string;
+};
+
+function rangeOf(s: FilterState): number {
+  return s.type === "daily" && s.to > s.from
+    ? Math.round(
+        (new Date(`${s.to}T00:00:00Z`).getTime() -
+          new Date(`${s.from}T00:00:00Z`).getTime()) /
+          86_400_000
+      ) + 1
+    : 1;
+}
+
+function paramsFor(s: FilterState): URLSearchParams {
+  const p = new URLSearchParams();
+  p.set("view", "detailed"); // filters live only in the Detailed tab — stay there
+  p.set("type", s.type);
+  if (s.type === "monthly" || s.type === "muster") {
+    p.set("month", String(s.month));
+    p.set("year", String(s.year));
+  } else if (s.type === "weekly") {
+    p.set("from", s.from);
+    p.set("to", addDays(s.from, 6));
+  } else {
+    p.set("from", s.from);
+    p.set("to", s.to);
+  }
+  if (s.dept) p.set("dept", s.dept);
+  if (s.loc) p.set("loc", s.loc);
+  return p;
+}
+
 export function ReportsFilters({ departments, locations, initial }: ReportsFiltersProps) {
   const router = useRouter();
-  const [type, setType] = useState<ReportType>(initial.type);
-  const [from, setFrom] = useState(initial.from);
-  const [to, setTo] = useState(initial.to);
-  const [month, setMonth] = useState(initial.month);
-  const [year, setYear] = useState(initial.year);
-  const [dept, setDept] = useState(initial.dept);
-  const [loc, setLoc] = useState(initial.loc);
+  const [state, setState] = useState<FilterState>(initial);
+  const { type, from, to, month, year, dept, loc } = state;
 
   const thisYear = new Date().getFullYear();
+  const rangeDays = rangeOf(state);
 
-  function buildParams(): URLSearchParams {
-    const p = new URLSearchParams();
-    p.set("type", type);
-    if (type === "monthly") {
-      p.set("month", String(month));
-      p.set("year", String(year));
-    } else if (type === "weekly") {
-      p.set("from", from);
-      p.set("to", addDays(from, 6));
-    } else {
-      p.set("from", from);
-      p.set("to", to);
-    }
-    if (dept) p.set("dept", dept);
-    if (loc) p.set("loc", loc);
-    return p;
+  // Apply a change immediately: merge, then navigate — so switching report type
+  // or any filter refreshes the report without a Generate click. A daily range
+  // over 7 days is held back (the inline note prompts a correction).
+  function apply(next: Partial<FilterState>) {
+    const merged = { ...state, ...next };
+    setState(merged);
+    if (merged.type === "daily" && rangeOf(merged) > 7) return;
+    router.push(`/admin/reports?${paramsFor(merged).toString()}`);
   }
-
-  function generate() {
-    router.push(`/admin/reports?${buildParams().toString()}`);
-  }
-
-  const rangeDays =
-    type === "daily" && to > from
-      ? Math.round(
-          (new Date(`${to}T00:00:00Z`).getTime() -
-            new Date(`${from}T00:00:00Z`).getTime()) /
-            86_400_000
-        ) + 1
-      : 1;
 
   return (
     <div className="space-y-4 rounded-card border border-gray-200 bg-white p-5 shadow-sm">
@@ -93,7 +108,7 @@ export function ReportsFilters({ departments, locations, initial }: ReportsFilte
         {TYPES.map((t) => (
           <button
             key={t.key}
-            onClick={() => setType(t.key)}
+            onClick={() => apply({ type: t.key })}
             className={[
               "rounded-md px-4 py-1.5 text-sm font-semibold transition-colors",
               type === t.key ? "bg-white text-brand shadow-sm" : "text-gray-500 hover:text-ink",
@@ -105,11 +120,11 @@ export function ReportsFilters({ departments, locations, initial }: ReportsFilte
       </div>
 
       <div className="flex flex-wrap items-end gap-4">
-        {type === "monthly" ? (
+        {type === "monthly" || type === "muster" ? (
           <>
             <div className="flex flex-col gap-1">
               <label className={labelCls}>Month</label>
-              <select className={selectCls} value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+              <select className={selectCls} value={month} onChange={(e) => apply({ month: Number(e.target.value) })}>
                 {MONTHS.map((m, i) => (
                   <option key={m} value={i + 1}>{m}</option>
                 ))}
@@ -117,7 +132,7 @@ export function ReportsFilters({ departments, locations, initial }: ReportsFilte
             </div>
             <div className="flex flex-col gap-1">
               <label className={labelCls}>Year</label>
-              <select className={selectCls} value={year} onChange={(e) => setYear(Number(e.target.value))}>
+              <select className={selectCls} value={year} onChange={(e) => apply({ year: Number(e.target.value) })}>
                 {Array.from({ length: 4 }, (_, i) => thisYear - i).map((y) => (
                   <option key={y} value={y}>{y}</option>
                 ))}
@@ -127,17 +142,17 @@ export function ReportsFilters({ departments, locations, initial }: ReportsFilte
         ) : type === "weekly" ? (
           <div className="flex flex-col gap-1">
             <label className={labelCls}>Week starting</label>
-            <input type="date" className={selectCls} value={from} onChange={(e) => setFrom(e.target.value)} />
+            <input type="date" className={selectCls} value={from} onChange={(e) => apply({ from: e.target.value })} />
           </div>
         ) : (
           <>
             <div className="flex flex-col gap-1">
               <label className={labelCls}>From</label>
-              <input type="date" className={selectCls} value={from} onChange={(e) => setFrom(e.target.value)} />
+              <input type="date" className={selectCls} value={from} onChange={(e) => apply({ from: e.target.value })} />
             </div>
             <div className="flex flex-col gap-1">
               <label className={labelCls}>To</label>
-              <input type="date" className={selectCls} value={to} onChange={(e) => setTo(e.target.value)} />
+              <input type="date" className={selectCls} value={to} onChange={(e) => apply({ to: e.target.value })} />
             </div>
             {type === "daily" && rangeDays > 7 && (
               <span className="pb-2.5 text-xs font-semibold text-danger-deep">Max 7 days for daily range</span>
@@ -147,7 +162,7 @@ export function ReportsFilters({ departments, locations, initial }: ReportsFilte
 
         <div className="flex flex-col gap-1">
           <label className={labelCls}>Department</label>
-          <select className={selectCls} value={dept} onChange={(e) => setDept(e.target.value)}>
+          <select className={selectCls} value={dept} onChange={(e) => apply({ dept: e.target.value })}>
             <option value="">All departments</option>
             {departments.map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>
@@ -156,7 +171,7 @@ export function ReportsFilters({ departments, locations, initial }: ReportsFilte
         </div>
         <div className="flex flex-col gap-1">
           <label className={labelCls}>Location</label>
-          <select className={selectCls} value={loc} onChange={(e) => setLoc(e.target.value)}>
+          <select className={selectCls} value={loc} onChange={(e) => apply({ loc: e.target.value })}>
             <option value="">All locations</option>
             {locations.map((l) => (
               <option key={l.id} value={l.id}>{l.name}</option>
@@ -164,14 +179,18 @@ export function ReportsFilters({ departments, locations, initial }: ReportsFilte
           </select>
         </div>
 
-        <Button onClick={generate} disabled={type === "daily" && rangeDays > 7}>
-          Generate
-        </Button>
-        <a href={`/admin/reports/export?${buildParams().toString()}`}>
+        <a href={`/admin/reports/export?${paramsFor(state).toString()}`}>
           <Button variant="secondary">
             <Download className="h-4 w-4" /> Export CSV
           </Button>
         </a>
+        {type === "muster" && (
+          <a href={`/admin/reports/muster-pdf?${paramsFor(state).toString()}`} target="_blank" rel="noreferrer">
+            <Button variant="secondary">
+              <Download className="h-4 w-4" /> Export PDF
+            </Button>
+          </a>
+        )}
       </div>
     </div>
   );

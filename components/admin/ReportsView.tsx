@@ -13,6 +13,8 @@ import {
   type ReportType,
   type MonthlySummaryRow,
 } from "@/lib/data/report-types";
+import { getMuster } from "@/lib/data/muster";
+import { MusterGrid } from "@/components/admin/reports/MusterGrid";
 import { formatIstDate } from "@/lib/ist";
 
 export interface ResolvedParams {
@@ -68,6 +70,12 @@ function CountHeader({ n, noun }: { n: number; noun: string }) {
 
 export async function ReportsView({ params }: { params: ResolvedParams }) {
   const f = { departmentId: params.dept || null, locationId: params.loc || null };
+
+  if (params.type === "muster") {
+    const { dates, rows, monthLabel } = await getMuster(params.year, params.month, f);
+    if (rows.length === 0) return <EmptyCard label="No employees for this month." />;
+    return <MusterGrid dates={dates} rows={rows} monthLabel={monthLabel} />;
+  }
 
   if (params.type === "daily") {
     if (params.to > params.from) {

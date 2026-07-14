@@ -3,10 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin, AuthzError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { type ActionState, str } from "@/lib/action-utils";
+import { type ActionState, str, bool } from "@/lib/action-utils";
+import type { OrgModules } from "@/lib/types";
 
-// Update org-level settings: display name + go-live date (the date before which
-// attendance reporting won't flag absences). Mirrors the organizations columns.
+// Update org-level settings: display name, go-live date, and the web-owned
+// `settings.modules` (feature flags) + `settings.company_address` (payslip
+// header) keys.
+//
+// ⚠️ JSONB clobber protection: organizations.settings is SHARED with the
+// Flutter app, which read-modify-writes the whole map for its own keys
+// (last_accrual_month, last_absent_processed). We therefore never replace the
+// map — we re-read it and merge only our namespaced `modules` key, keeping the
+// window for lost updates to this single statement.
 export async function updateOrgSettings(
   _prev: ActionState,
   formData: FormData
@@ -20,15 +28,42 @@ export async function updateOrgSettings(
 
   const name = str(formData, "name");
   const goLiveDate = str(formData, "goLiveDate"); // may be null to clear
+  const companyAddress = str(formData, "companyAddress") ?? ""; // "" clears
   if (!name) return { ok: false, error: "Organization name is required." };
 
+  const modules: OrgModules = {
+    advances: bool(formData, "moduleAdvances"),
+    announcements: bool(formData, "moduleAnnouncements"),
+    payslips: bool(formData, "modulePayslips"),
+    expenses: bool(formData, "moduleExpenses"),
+  };
+
   const supabase = createAdminClient();
+
+  // Fresh read immediately before the merge-write (never a stale whole-map write).
+  const { data: org, error: readErr } = await supabase
+    .from("organizations")
+    .select("settings")
+    .eq("id", admin.org_id)
+    .single();
+  if (readErr || !org) {
+    return { ok: false, error: readErr?.message ?? "Organization not found." };
+  }
+  const settings =
+    org.settings && typeof org.settings === "object"
+      ? (org.settings as Record<string, unknown>)
+      : {};
+
   const { error } = await supabase
     .from("organizations")
-    .update({ name, go_live_date: goLiveDate })
+    .update({
+      name,
+      go_live_date: goLiveDate,
+      settings: { ...settings, modules, company_address: companyAddress },
+    })
     .eq("id", admin.org_id);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath("/admin/settings");
+  revalidatePath("/", "layout"); // module flags feed both shells' nav
   return { ok: true, message: "Settings saved." };
 }

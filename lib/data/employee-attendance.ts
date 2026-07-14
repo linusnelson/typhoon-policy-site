@@ -105,32 +105,49 @@ export async function getMonthAttendance(
       .eq("employee_id", employeeId)
       .gte("visit_date", fromKey)
       .lte("visit_date", toKey),
-    supabase.from("attendance_policies").select("department_id, late_threshold_min"),
+    supabase
+      .from("attendance_policies")
+      .select(
+        "department_id, late_threshold_min, half_day_min_hours, full_day_min_hours"
+      ),
   ]);
 
-  // Shift start
+  // Shift start + Saturday half-day flag
   let shiftStart = DEFAULT_SHIFT_START;
+  let satHalf = true;
   const shiftId = (emp?.shift_id as string | null) ?? null;
   if (shiftId) {
     const { data: shift } = await supabase
       .from("shifts")
-      .select("start_time")
+      .select("start_time, saturday_half_day")
       .eq("id", shiftId)
       .maybeSingle();
     if (shift?.start_time) shiftStart = timeToMinutes(shift.start_time as string);
+    satHalf = (shift?.saturday_half_day as boolean | null) ?? true;
   } else {
     const { data: def } = await supabase
       .from("shifts")
-      .select("start_time")
+      .select("start_time, saturday_half_day")
       .eq("is_default", true)
       .limit(1)
       .maybeSingle();
     if (def?.start_time) shiftStart = timeToMinutes(def.start_time as string);
+    satHalf = (def?.saturday_half_day as boolean | null) ?? true;
   }
 
+  // Department policy → org-wide (department_id NULL) → hard defaults. The
+  // configurable full-day threshold decides Half Day — same rule as the
+  // clock_bays AttendanceEngine and the reports page.
+  const deptPol = (policies ?? []).find(
+    (p) => p.department_id === emp?.department_id
+  );
+  const orgPol = (policies ?? []).find((p) => p.department_id === null);
   const grace =
-    (policies ?? []).find((p) => p.department_id === emp?.department_id)
-      ?.late_threshold_min ?? DEFAULT_LATE;
+    deptPol?.late_threshold_min ?? orgPol?.late_threshold_min ?? DEFAULT_LATE;
+  const fullMin =
+    (deptPol?.full_day_min_hours as number | null) ??
+    (orgPol?.full_day_min_hours as number | null) ??
+    8;
 
   // Group punches by IST day
   const byDay = new Map<
@@ -156,10 +173,14 @@ export async function getMonthAttendance(
     byDay.set(key, list);
   }
 
-  // Visit minutes per day
+  // Visit minutes per day + days with any client check-in (field days create
+  // no punches — the check-in is the presence proof).
   const visitMins = new Map<string, number>();
+  const visitCheckinDays = new Set<string>();
   for (const v of visits ?? []) {
-    if (!v.check_in_at || !v.check_out_at) continue;
+    if (!v.check_in_at) continue;
+    visitCheckinDays.add(v.visit_date as string);
+    if (!v.check_out_at) continue;
     const day = v.visit_date as string;
     const mins =
       (new Date(v.check_out_at as string).getTime() -
@@ -181,7 +202,8 @@ export async function getMonthAttendance(
     const e = l.end_date > toKey ? toKey : l.end_date;
     for (; s <= e; s = nextDay(s)) {
       leaveByDate.set(s, code);
-      leaveCount++;
+      const lwd = weekdayOf(s);
+      leaveCount += lwd === 0 ? 0 : lwd === 6 && satHalf ? 0.5 : 1;
     }
   }
 
@@ -232,21 +254,29 @@ export async function getMonthAttendance(
         }
       }
       if (!pout) status = "incomplete";
-      else if (hours > 0 && hours < 4) status = "half_day";
+      else if (hours > 0 && hours < fullMin) status = "half_day";
       else if (workType === "wfh") status = "wfh";
       else if (workType === "client_visit") status = "client_visit";
       else if (workType === "event") status = "event";
       else if (isLate) status = "late";
       else status = "present";
+    } else if (visitCheckinDays.has(d)) {
+      // Field day without punches: the client check-in is the presence proof.
+      status = "client_visit";
+      workType = "client_visit";
+      hours = (visitMins.get(d) ?? 0) / 60;
     } else {
       status = "absent";
     }
 
-    // Stats: exclude weekends, holidays, leave (mirror Flutter)
-    if (wd < 6 && !holidayName && leaveCode === null) {
-      if (status === "absent") absent++;
+    // Stats: muster-weighted like the register and the app — Sunday weighs 0,
+    // Saturday weighs 0.5 when the shift has Saturday half-days, else 1.
+    // Holidays and leave days are excluded from present/absent.
+    const weight = wd === 0 ? 0 : wd === 6 && satHalf ? 0.5 : 1;
+    if (weight > 0 && !holidayName && leaveCode === null) {
+      if (status === "absent") absent += weight;
       else if (status !== "incomplete") {
-        present++;
+        present += weight;
         if (isLate) late++;
       }
     }

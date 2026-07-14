@@ -1,5 +1,7 @@
 import { getCurrentEmployee } from "@/lib/policies";
 import { getUnreadNotificationCount } from "@/lib/data/notifications";
+import { getOrgModules } from "@/lib/data/org";
+import { isServiceAccount } from "@/lib/config";
 import { PortalShell } from "@/components/nav/PortalShell";
 import { NotificationBell } from "@/components/nav/NotificationBell";
 import { UserMenu } from "@/components/nav/UserMenu";
@@ -18,11 +20,17 @@ export default async function EmployeeLayout({
   if (!employee) return <AccessDenied reason="no-account" />;
   if (employee.status !== "active") return <AccessDenied reason="inactive" />;
 
-  const unread = await getUnreadNotificationCount(employee.id);
+  const [unread, modules] = await Promise.all([
+    getUnreadNotificationCount(employee.id),
+    getOrgModules(employee.org_id),
+  ]);
 
   return (
     <PortalShell
       role={employee.role}
+      modules={modules}
+      isExpenseApprover={employee.is_expense_approver}
+      hideSelfServe={employee.role === "admin" || isServiceAccount(employee.email)}
       headerRight={
         <>
           <NotificationBell employeeId={employee.id} initialUnread={unread} />

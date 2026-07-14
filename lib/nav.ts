@@ -22,8 +22,12 @@ import {
   Plane,
   Bell,
   UserCircle,
+  Wallet,
+  Receipt,
+  ReceiptIndianRupee,
+  Megaphone,
 } from "lucide-react";
-import type { EmployeeRole } from "@/lib/types";
+import { DEFAULT_MODULES, type EmployeeRole, type ModuleKey, type OrgModules } from "@/lib/types";
 
 export interface NavItem {
   label: string;
@@ -31,6 +35,14 @@ export interface NavItem {
   icon: LucideIcon;
   // Roles allowed to see this item. Omitted = all roles (self-serve).
   roles?: EmployeeRole[];
+  // Org module flag gating this item. Omitted = always on.
+  module?: ModuleKey;
+  // Visible only to expense approvers (employees.is_expense_approver) and
+  // admins — a capability flag, orthogonal to `roles`.
+  approverOnly?: boolean;
+  // Personal self-serve pages (own attendance, leave, etc.). Hidden for admins
+  // and service accounts, who have no personal attendance/leave of their own.
+  selfServeOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -48,10 +60,40 @@ const NAV: NavGroup[] = [
     heading: "My space",
     items: [
       { label: "Dashboard", href: "/", icon: LayoutDashboard },
-      { label: "My Attendance", href: "/attendance", icon: CalendarClock },
-      { label: "My Leave", href: "/leave", icon: Plane },
-      { label: "My Visits", href: "/visits", icon: MapPin },
-      { label: "My Events", href: "/events", icon: CalendarRange },
+      {
+        label: "My Attendance",
+        href: "/attendance",
+        icon: CalendarClock,
+        selfServeOnly: true,
+      },
+      { label: "My Leave", href: "/leave", icon: Plane, selfServeOnly: true },
+      { label: "My Visits", href: "/visits", icon: MapPin, selfServeOnly: true },
+      {
+        label: "My Events",
+        href: "/events",
+        icon: CalendarRange,
+        selfServeOnly: true,
+      },
+      {
+        label: "Loans & Advances",
+        href: "/advances",
+        icon: Wallet,
+        module: "advances",
+        selfServeOnly: true,
+      },
+      {
+        label: "My Expenses",
+        href: "/expenses",
+        icon: ReceiptIndianRupee,
+        module: "expenses",
+        selfServeOnly: true,
+      },
+      {
+        label: "Announcements",
+        href: "/announcements",
+        icon: Megaphone,
+        module: "announcements",
+      },
       { label: "Documents", href: "/documents", icon: FileText },
       { label: "Org map", href: "/org", icon: Network },
       { label: "Profile", href: "/profile", icon: UserCircle },
@@ -151,11 +193,55 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    heading: "Finance",
+    items: [
+      {
+        label: "Loans & Advances",
+        href: "/admin/advances",
+        icon: Wallet,
+        roles: ["admin"],
+        module: "advances",
+      },
+      {
+        // Payroll management for accounts users — outside /admin so non-admin
+        // approvers can reach it (the admin layout bounces them).
+        label: "Payslips",
+        href: "/payslips/manage",
+        icon: Receipt,
+        module: "payslips",
+        approverOnly: true,
+      },
+      {
+        // Approval queue for accounts users — outside /admin so non-admin
+        // approvers can reach it (the admin layout bounces them).
+        label: "Expense Approvals",
+        href: "/expenses/approvals",
+        icon: ReceiptIndianRupee,
+        module: "expenses",
+        approverOnly: true,
+      },
+      {
+        label: "Expense Settings",
+        href: "/admin/expenses",
+        icon: SlidersHorizontal,
+        roles: ["admin"],
+        module: "expenses",
+      },
+    ],
+  },
+  {
     heading: "Config",
     items: [
       { label: "Locations", href: "/admin/locations", icon: Pin, roles: ["admin"] },
       { label: "QR Codes", href: "/admin/qr", icon: QrCode, roles: ["admin"] },
       { label: "Policies", href: "/admin/policies", icon: FileText, roles: ["admin"] },
+      {
+        label: "Announcements",
+        href: "/admin/announcements",
+        icon: Megaphone,
+        roles: ["admin"],
+        module: "announcements",
+      },
       { label: "Reports", href: "/admin/reports", icon: BarChart3, roles: ["admin"] },
       { label: "Settings", href: "/admin/settings", icon: Settings, roles: ["admin"] },
     ],
@@ -167,10 +253,26 @@ export { Bell };
 
 // Returns the sidebar groups visible to the given role, dropping any group left
 // empty after filtering. Employees see only "My space"; admins/managers also see
-// the management groups (further filtered by admin-only items).
-export function navForRole(role: EmployeeRole): NavGroup[] {
+// the management groups (further filtered by admin-only items). Items carrying a
+// `module` key are additionally gated on the org's module flags (Settings →
+// Modules) — note nav hiding is cosmetic; module pages also 404 server-side.
+// `hideSelfServe` drops the personal "My …" items — true for admins and service
+// accounts (see isServiceAccount), who have no personal attendance/leave. Kept
+// as an explicit flag (not derived from role) so title lookups can pass false.
+export function navForRole(
+  role: EmployeeRole,
+  modules: OrgModules = DEFAULT_MODULES,
+  isExpenseApprover = false,
+  hideSelfServe = false
+): NavGroup[] {
   return NAV.map((group) => ({
     ...group,
-    items: group.items.filter((i) => !i.roles || i.roles.includes(role)),
+    items: group.items.filter(
+      (i) =>
+        (!i.roles || i.roles.includes(role)) &&
+        (!i.module || modules[i.module]) &&
+        (!i.approverOnly || isExpenseApprover || role === "admin") &&
+        (!i.selfServeOnly || !hideSelfServe)
+    ),
   })).filter((group) => group.items.length > 0);
 }

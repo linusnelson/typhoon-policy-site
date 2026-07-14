@@ -39,7 +39,9 @@ function initials(name: string): string {
 }
 
 function Avatar({ name, url }: { name: string; url: string | null }) {
-  if (url) {
+  // Only render http(s) URLs (signed Storage URLs). A bare object path would
+  // 404 as an <img src>, so fall through to initials instead.
+  if (url && /^https?:\/\//.test(url)) {
     // eslint-disable-next-line @next/next/no-img-element
     return <img src={url} alt={name} className="h-9 w-9 rounded-full object-cover" />;
   }

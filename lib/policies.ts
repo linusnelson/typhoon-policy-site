@@ -18,7 +18,7 @@ export async function getCurrentEmployee(): Promise<Employee | null> {
 
   const { data } = await supabase
     .from("employees")
-    .select("id, org_id, name, email, role, status")
+    .select("id, org_id, name, email, role, status, is_expense_approver")
     .eq("email", user.email)
     .maybeSingle();
 

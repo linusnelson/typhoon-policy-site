@@ -1,8 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getDocument } from "@/lib/policies";
+import { getDocument, getDocumentVersions } from "@/lib/policies";
 import { getComplianceForDocument } from "@/lib/admin";
+import { publishDraftVersion } from "@/actions/publishVersion";
+import { formatIstDate } from "@/lib/ist";
 import { Badge, Button, Card } from "@/components/ui";
+
+const VERSION_TONE = {
+  draft: "warning",
+  published: "success",
+  archived: "neutral",
+} as const;
 
 export default async function AdminDocumentPage({
   params,
@@ -13,7 +21,10 @@ export default async function AdminDocumentPage({
   const document = await getDocument(id);
   if (!document) notFound();
 
-  const report = await getComplianceForDocument(document);
+  const [report, versions] = await Promise.all([
+    getComplianceForDocument(document),
+    getDocumentVersions(id),
+  ]);
   const total = report.signers.length;
 
   return (
@@ -45,6 +56,62 @@ export default async function AdminDocumentPage({
           </Link>
         </div>
       </div>
+
+      {/* Versions — drafts (e.g. seeded policies) are published from here */}
+      <Card className="p-5">
+        <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-wide text-gray-400">
+          Versions
+        </h2>
+        {versions.length === 0 ? (
+          <p className="text-sm text-gray-400">No versions yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {versions.map((v) => (
+              <div
+                key={v.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-100 px-3 py-2"
+              >
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="font-semibold text-ink">
+                    v{v.version_label}
+                  </span>
+                  <Badge tone={VERSION_TONE[v.status] ?? "neutral"}>
+                    {v.status}
+                  </Badge>
+                  {v.id === document.current_version_id && (
+                    <Badge tone="brand">Current</Badge>
+                  )}
+                  <span className="text-xs text-gray-400">
+                    {v.effective_date && (
+                      <>Effective {formatIstDate(v.effective_date)} · </>
+                    )}
+                    {v.published_at
+                      ? `Published ${formatIstDate(v.published_at)}`
+                      : `Created ${formatIstDate(v.created_at)}`}
+                  </span>
+                </div>
+                {v.status === "draft" && (
+                  <div className="flex items-center gap-2">
+                    <Link href={`/admin/policies/${id}/draft/${v.id}`}>
+                      <Button variant="secondary" type="button">
+                        Edit
+                      </Button>
+                    </Link>
+                    <form action={publishDraftVersion}>
+                      <input type="hidden" name="versionId" value={v.id} />
+                      <Button type="submit">Publish</Button>
+                    </form>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="mt-3 text-xs text-gray-400">
+          Publishing makes the version visible to employees and prompts everyone
+          to sign it. The previously current version is archived.
+        </p>
+      </Card>
 
       <Card className="overflow-hidden">
         <table className="w-full text-sm">

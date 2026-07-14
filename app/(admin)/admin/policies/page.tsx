@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getAllDocuments, getComplianceForDocument } from "@/lib/admin";
+import { createClient } from "@/lib/supabase/server";
 import { Badge, Button, Card } from "@/components/ui";
 
 export default async function AdminDashboardPage() {
@@ -7,6 +8,19 @@ export default async function AdminDashboardPage() {
   const reports = await Promise.all(
     documents.map((d) => getComplianceForDocument(d))
   );
+
+  // Draft counts per document (admins see drafts via RLS) — flags documents
+  // awaiting review/publication directly in the list.
+  const supabase = await createClient();
+  const { data: draftRows } = await supabase
+    .from("policy_versions")
+    .select("document_id")
+    .eq("status", "draft");
+  const draftsByDoc = new Map<string, number>();
+  for (const r of draftRows ?? []) {
+    const id = r.document_id as string;
+    draftsByDoc.set(id, (draftsByDoc.get(id) ?? 0) + 1);
+  }
 
   return (
     <div className="space-y-6">
@@ -33,6 +47,7 @@ export default async function AdminDashboardPage() {
         {reports.map((r) => {
           const total = r.signers.length;
           const pct = total ? Math.round((r.signedCount / total) * 100) : 0;
+          const drafts = draftsByDoc.get(r.document.id) ?? 0;
           return (
             <Link key={r.document.id} href={`/admin/policies/${r.document.id}`}>
               <Card className="p-5 transition-colors hover:border-gray-300">
@@ -48,22 +63,29 @@ export default async function AdminDashboardPage() {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-3">
-                    {r.pendingCount > 0 ? (
-                      <Badge tone="warning">{r.pendingCount} pending</Badge>
-                    ) : total > 0 ? (
-                      <Badge tone="success">All signed</Badge>
-                    ) : null}
-                    <span className="text-sm font-semibold text-gray-700">
-                      {r.signedCount}/{total} · {pct}%
-                    </span>
+                    {drafts > 0 && <Badge tone="info">Draft — not published</Badge>}
+                    {/* Signature badges only make sense once a version is live. */}
+                    {r.currentVersion &&
+                      (r.pendingCount > 0 ? (
+                        <Badge tone="warning">{r.pendingCount} pending</Badge>
+                      ) : total > 0 ? (
+                        <Badge tone="success">All signed</Badge>
+                      ) : null)}
+                    {r.currentVersion && (
+                      <span className="text-sm font-semibold text-gray-700">
+                        {r.signedCount}/{total} · {pct}%
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                  <div
-                    className="h-full rounded-full bg-brand"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
+                {r.currentVersion && (
+                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div
+                      className="h-full rounded-full bg-brand"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                )}
               </Card>
             </Link>
           );

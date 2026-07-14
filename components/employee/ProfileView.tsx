@@ -1,7 +1,9 @@
 import { Card } from "@/components/ui";
 import { formatIstDate } from "@/lib/ist";
 import { getMyProfile } from "@/lib/data/employee-profile";
+import { getMyBankDetails } from "@/lib/data/bank-details";
 import { PhoneForm } from "@/components/employee/PhoneForm";
+import { BankDetailsForm } from "@/components/employee/BankDetailsForm";
 
 function initials(name: string): string {
   return name
@@ -24,7 +26,10 @@ function Field({ label, value }: { label: string; value: string | null }) {
 }
 
 export async function ProfileView({ employeeId }: { employeeId: string }) {
-  const p = await getMyProfile(employeeId);
+  const [p, bank] = await Promise.all([
+    getMyProfile(employeeId),
+    getMyBankDetails(employeeId),
+  ]);
   if (!p) {
     return (
       <Card className="p-8 text-center text-sm text-gray-400">
@@ -67,6 +72,24 @@ export async function ProfileView({ employeeId }: { employeeId: string }) {
         <p className="mt-3 text-xs text-gray-400">
           Email and emergency contact are managed by HR.
         </p>
+      </Card>
+
+      <Card className="p-6">
+        <h2 className="mb-4 font-display font-bold text-ink">
+          Bank details (for payslips)
+        </h2>
+        <BankDetailsForm
+          details={
+            bank
+              ? {
+                  bankName: bank.bankName,
+                  bankAccountNo: bank.bankAccountNo,
+                  pan: bank.pan,
+                }
+              : null
+          }
+          editable={!bank || !bank.locked}
+        />
       </Card>
 
       <Card className="p-6">

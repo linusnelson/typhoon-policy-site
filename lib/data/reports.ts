@@ -86,7 +86,10 @@ async function loadRefs(supabase: Awaited<ReturnType<typeof createClient>>) {
   const [{ data: depts }, { data: locs }, { data: shifts }] = await Promise.all([
     supabase.from("departments").select("id, name"),
     supabase.from("locations").select("id, name"),
-    supabase.from("shifts").select("start_time").limit(1),
+    supabase
+      .from("shifts")
+      .select("start_time, end_time, break_minutes, saturday_half_day, saturday_end_time")
+      .limit(1),
   ]);
   const deptMap = new Map<string, string>(
     (depts ?? []).map((d) => [d.id as string, d.name as string])
@@ -94,11 +97,30 @@ async function loadRefs(supabase: Awaited<ReturnType<typeof createClient>>) {
   const locMap = new Map<string, string>(
     (locs ?? []).map((l) => [l.id as string, l.name as string])
   );
-  const shiftStart =
-    shifts && shifts.length > 0 && shifts[0].start_time
-      ? timeToMinutes(shifts[0].start_time as string)
-      : DEFAULT_SHIFT_START;
-  return { deptMap, locMap, shiftStart };
+  const shift = shifts && shifts.length > 0 ? shifts[0] : null;
+  const shiftStart = shift?.start_time
+    ? timeToMinutes(shift.start_time as string)
+    : DEFAULT_SHIFT_START;
+  const shiftEnd = shift?.end_time
+    ? timeToMinutes(shift.end_time as string)
+    : DEFAULT_SHIFT_START + 9 * 60;
+  const satHalf = (shift?.saturday_half_day as boolean | null) ?? true;
+  const satEnd = shift?.saturday_end_time
+    ? timeToMinutes(shift.saturday_end_time as string)
+    : 13 * 60;
+  const breakMin = (shift?.break_minutes as number | null) ?? 0;
+  // Effective shift duration in hours for a weekday — the OT baseline
+  // (mirrors clock_bays AttendanceEngine: end − start − break, with the
+  // Saturday short end when the shift has Saturday half-days).
+  const shiftHours = (weekday: number): number => {
+    const end = weekday === 6 && satHalf ? satEnd : shiftEnd;
+    return Math.max(0, (end - shiftStart - breakMin) / 60);
+  };
+  // Muster summary weight: Sunday 0, Saturday 0.5 (when the shift has
+  // Saturday half-days), everything else 1.
+  const dayWeight = (weekday: number): number =>
+    weekday === 0 ? 0 : weekday === 6 && satHalf ? 0.5 : 1;
+  return { deptMap, locMap, shiftStart, shiftHours, dayWeight };
 }
 
 function buildEmployeeQuery(
@@ -118,14 +140,42 @@ function buildEmployeeQuery(
   return q;
 }
 
-function lateThresholdMap(
-  policies: { department_id: string | null; late_threshold_min: number | null }[]
-): Map<string, number> {
-  const m = new Map<string, number>();
+// Per-department attendance thresholds with an org-wide fallback (a policy
+// row with department_id NULL), then hard defaults. The half/full-day hour
+// fields are the admin-configured values from attendance_policies — the
+// single source of truth shared with the clock_bays AttendanceEngine.
+interface PolicyThresholds {
+  late: number;
+  halfMin: number;
+  fullMin: number;
+}
+
+type PolicyRow = {
+  department_id: string | null;
+  late_threshold_min: number | null;
+  half_day_min_hours: number | null;
+  full_day_min_hours: number | null;
+};
+
+const POLICY_SELECT =
+  "department_id, late_threshold_min, half_day_min_hours, full_day_min_hours";
+
+function policyThresholds(policies: PolicyRow[]): (deptId: string | null) => PolicyThresholds {
+  const toThresholds = (p: PolicyRow | undefined, base: PolicyThresholds): PolicyThresholds => ({
+    late: p?.late_threshold_min ?? base.late,
+    halfMin: p?.half_day_min_hours ?? base.halfMin,
+    fullMin: p?.full_day_min_hours ?? base.fullMin,
+  });
+  const defaults: PolicyThresholds = { late: DEFAULT_LATE, halfMin: 4, fullMin: 8 };
+  const orgWide = toThresholds(
+    policies.find((p) => p.department_id === null),
+    defaults
+  );
+  const byDept = new Map<string, PolicyThresholds>();
   for (const p of policies) {
-    if (p.department_id) m.set(p.department_id, p.late_threshold_min ?? DEFAULT_LATE);
+    if (p.department_id) byDept.set(p.department_id, toThresholds(p, orgWide));
   }
-  return m;
+  return (deptId) => (deptId ? byDept.get(deptId) ?? orgWide : orgWide);
 }
 
 function usableLeaveMap(
@@ -178,9 +228,7 @@ export async function dailyAttendance(
       .in("status", ["pending", "approved"])
       .lte("start_date", dateKey)
       .gte("end_date", dateKey),
-    supabase
-      .from("attendance_policies")
-      .select("department_id, late_threshold_min"),
+    supabase.from("attendance_policies").select(POLICY_SELECT),
     supabase
       .from("leave_balances")
       .select("employee_id, earned, used, carried_forward")
@@ -192,8 +240,19 @@ export async function dailyAttendance(
       .is("corrected_in", null),
   ]);
 
+  // Field days create no attendance punches — a client check-in (scheduled or
+  // ad-hoc) is the presence proof, so fetch it separately.
+  const { data: dayVisits } = await supabase
+    .from("client_visits")
+    .select("employee_id, check_in_at")
+    .eq("visit_date", dateKey)
+    .not("check_in_at", "is", null);
+  const visitCheckedIn = new Set(
+    (dayVisits ?? []).map((v) => v.employee_id as string)
+  );
+
   const { deptMap, locMap, shiftStart } = refs;
-  const lateMap = lateThresholdMap(policies ?? []);
+  const policyFor = policyThresholds((policies ?? []) as PolicyRow[]);
   const usableLeave = usableLeaveMap(balances ?? []);
   const onLeave = new Set((leaves ?? []).map((l) => l.employee_id as string));
   const markedAbsent = new Set(
@@ -213,7 +272,8 @@ export async function dailyAttendance(
     .filter((e) => !e.date_of_joining || e.date_of_joining <= dateKey)
     .map((emp) => {
       const eid = emp.id;
-      const grace = lateMap.get(emp.department_id ?? "") ?? DEFAULT_LATE;
+      const pol = policyFor(emp.department_id);
+      const grace = pol.late;
       const pin = punchIn.get(eid);
       const pout = punchOut.get(eid);
 
@@ -227,7 +287,11 @@ export async function dailyAttendance(
       if (onLeave.has(eid)) {
         status = "On Leave";
       } else if (!pin) {
-        if (markedAbsent.has(eid)) {
+        if (visitCheckedIn.has(eid)) {
+          // Out in the field: a client check-in is the day's presence proof.
+          status = "Present";
+          workType = "client_visit";
+        } else if (markedAbsent.has(eid)) {
           status = (usableLeave.get(eid) ?? 1) <= 0 ? "LOP" : "Absent";
         } else {
           status = "No Punch";
@@ -243,7 +307,7 @@ export async function dailyAttendance(
             3_600_000;
         }
         if (!pout) status = "Incomplete";
-        else if (workedHours > 0 && workedHours < 4) status = "Half Day";
+        else if (workedHours > 0 && workedHours < pol.fullMin) status = "Half Day";
         else if (isLate) status = "Late";
         else status = "Present";
       }
@@ -307,17 +371,15 @@ async function periodSummary(
       .select("employee_id, visit_date, check_in_at, check_out_at")
       .gte("visit_date", fromKey)
       .lte("visit_date", toKey),
-    supabase
-      .from("attendance_policies")
-      .select("department_id, late_threshold_min"),
+    supabase.from("attendance_policies").select(POLICY_SELECT),
     supabase
       .from("leave_balances")
       .select("employee_id, earned, used, carried_forward")
       .eq("year", year),
   ]);
 
-  const { deptMap, locMap, shiftStart } = refs;
-  const lateMap = lateThresholdMap(policies ?? []);
+  const { deptMap, locMap, shiftStart, shiftHours, dayWeight } = refs;
+  const policyFor = policyThresholds((policies ?? []) as PolicyRow[]);
   const usableLeave = usableLeaveMap(balances ?? []);
 
   // punches grouped by employee → date key
@@ -359,7 +421,9 @@ async function periodSummary(
   for (const v of visits ?? []) {
     const eid = v.employee_id as string;
     visitCount.set(eid, (visitCount.get(eid) ?? 0) + 1);
-    if (v.visit_date) {
+    // Only a checked-in visit is a field day — a scheduled-but-never-executed
+    // visit is a missed schedule, not attendance.
+    if (v.visit_date && v.check_in_at) {
       const set = visitDates.get(eid) ?? new Set();
       set.add(v.visit_date as string);
       visitDates.set(eid, set);
@@ -376,7 +440,8 @@ async function periodSummary(
   return ((emps as EmpRow[] | null) ?? [])
     .map((emp) => {
       const eid = emp.id;
-      const grace = lateMap.get(emp.department_id ?? "") ?? DEFAULT_LATE;
+      const pol = policyFor(emp.department_id);
+      const grace = pol.late;
       const empPunches = byEmpDate.get(eid) ?? new Map();
 
       let presentDays = 0;
@@ -395,7 +460,7 @@ async function periodSummary(
         const pout = dayPunches.find((p) => p.punch_type === "out");
         if (!pin) continue;
 
-        presentDays += weekdayOf(dateKey) === 6 ? 0.5 : 1;
+        presentDays += dayWeight(weekdayOf(dateKey));
 
         switch (pin.work_type ?? "office") {
           case "wfh":
@@ -423,9 +488,19 @@ async function periodSummary(
             hours = visitHours.get(eid)!;
           }
           totalHours += hours;
-          if (hours < 4) halfDays++;
-          if (hours > 8) otHours += hours - 8;
+          if (hours > 0 && hours < pol.fullMin) halfDays++;
+          // OT baseline = the shift's effective duration for that weekday
+          // (Saturday uses the short end), matching the app's engine — not a
+          // hardcoded 8h, which produced phantom OT on longer shifts.
+          const otBase = shiftHours(weekdayOf(dateKey));
+          if (otBase > 0 && hours > otBase) otHours += hours - otBase;
         }
+      }
+
+      // Field days without punches still count as present — the client
+      // check-in is the presence proof (visits never create punches).
+      for (const d of visitDates.get(eid) ?? []) {
+        if (!empPunches.has(d)) presentDays += dayWeight(weekdayOf(d));
       }
 
       const leaveDays = leaveDaysMap.get(eid) ?? 0;
@@ -494,7 +569,7 @@ export async function visitReport(
     supabase
       .from("client_visits")
       .select(
-        "employee_id, client_name, check_in_at, check_out_at, visit_date, notes, employees!client_visits_employee_id_fkey(employee_code, name, department_id)"
+        "employee_id, client_name, check_in_at, check_out_at, check_in_lat, check_in_lng, check_out_lat, check_out_lng, visit_date, notes, employees!client_visits_employee_id_fkey(employee_code, name, department_id)"
       )
       .gte("visit_date", fromKey)
       .lte("visit_date", toKey)
@@ -511,6 +586,10 @@ export async function visitReport(
     client_name: string | null;
     check_in_at: string | null;
     check_out_at: string | null;
+    check_in_lat: number | null;
+    check_in_lng: number | null;
+    check_out_lat: number | null;
+    check_out_lng: number | null;
     visit_date: string | null;
     notes: string | null;
     employees: {
@@ -519,6 +598,9 @@ export async function visitReport(
       department_id: string | null;
     } | null;
   };
+
+  const gps = (lat: number | null, lng: number | null): string =>
+    lat != null && lng != null ? `${lat},${lng}` : "";
 
   return ((visits as V[] | null) ?? []).map((v) => {
     const emp = v.employees;
@@ -539,6 +621,8 @@ export async function visitReport(
       checkOutTime: v.check_out_at ? hhmm(v.check_out_at) : "—",
       duration,
       notes: v.notes ?? "",
+      checkInGps: gps(v.check_in_lat, v.check_in_lng),
+      checkOutGps: gps(v.check_out_lat, v.check_out_lng),
     };
   });
 }
@@ -658,15 +742,30 @@ export async function dailyRange(
       .in("status", ["pending", "approved"])
       .lte("start_date", toKey)
       .gte("end_date", fromKey),
-    supabase.from("attendance_policies").select("department_id, late_threshold_min"),
+    supabase.from("attendance_policies").select(POLICY_SELECT),
     supabase
       .from("leave_balances")
       .select("employee_id, earned, used, carried_forward")
       .eq("year", year),
   ]);
 
+  // Field days create no punches — a client check-in is the presence proof.
+  const { data: rangeVisits } = await supabase
+    .from("client_visits")
+    .select("employee_id, visit_date, check_in_at")
+    .gte("visit_date", fromKey)
+    .lte("visit_date", toKey)
+    .not("check_in_at", "is", null);
+  const visitByEmp = new Map<string, Set<string>>();
+  for (const v of rangeVisits ?? []) {
+    const eid = v.employee_id as string;
+    const set = visitByEmp.get(eid) ?? new Set<string>();
+    set.add(v.visit_date as string);
+    visitByEmp.set(eid, set);
+  }
+
   const { deptMap, locMap, shiftStart } = refs;
-  const lateMap = lateThresholdMap(policies ?? []);
+  const policyFor = policyThresholds((policies ?? []) as PolicyRow[]);
   const usableLeave = usableLeaveMap(balances ?? []);
   const dates = enumerateDates(fromKey, toKey);
 
@@ -697,7 +796,8 @@ export async function dailyRange(
     .filter((e) => !e.date_of_joining || e.date_of_joining <= toKey)
     .map((emp) => {
       const eid = emp.id;
-      const grace = lateMap.get(emp.department_id ?? "") ?? DEFAULT_LATE;
+      const pol = policyFor(emp.department_id);
+      const grace = pol.late;
       const empPunches = byEmpDate.get(eid) ?? new Map();
       const byDate: Record<string, DayCell> = {};
 
@@ -712,12 +812,17 @@ export async function dailyRange(
         const pout = dayPunches.find((p) => p.punch_type === "out");
 
         if (!pin) {
-          byDate[dateKey] = {
-            status: (usableLeave.get(eid) ?? 1) <= 0 ? "LOP" : "Absent",
-            punchIn: "",
-            punchOut: "",
-            workedHours: 0,
-          };
+          if (visitByEmp.get(eid)?.has(dateKey)) {
+            // Out in the field: client check-in = present, no punches exist.
+            byDate[dateKey] = { status: "Present", punchIn: "", punchOut: "", workedHours: 0 };
+          } else {
+            byDate[dateKey] = {
+              status: (usableLeave.get(eid) ?? 1) <= 0 ? "LOP" : "Absent",
+              punchIn: "",
+              punchOut: "",
+              workedHours: 0,
+            };
+          }
           continue;
         }
         const isLate = istMinutesOfDay(pin.punched_at) > shiftStart + grace;
@@ -734,7 +839,11 @@ export async function dailyRange(
           (new Date(pout.punched_at).getTime() - new Date(pin.punched_at).getTime()) /
           3_600_000;
         const status =
-          workedHours > 0 && workedHours < 4 ? "Half Day" : isLate ? "Late" : "Present";
+          workedHours > 0 && workedHours < pol.fullMin
+            ? "Half Day"
+            : isLate
+              ? "Late"
+              : "Present";
         byDate[dateKey] = {
           status,
           punchIn: hhmm(pin.punched_at),

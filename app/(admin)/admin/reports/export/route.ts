@@ -14,20 +14,29 @@ import {
   monthlySummaryCsv,
   visitReportCsv,
   eventAttendanceCsv,
+  advanceDeductionsCsv,
+  musterCsv,
 } from "@/lib/data/report-types";
+import { getMuster } from "@/lib/data/muster";
+import { getMyTeamMemberIds } from "@/lib/data/team";
+import { listRepaymentsForMonth } from "@/lib/data/advances";
 import { istToday } from "@/lib/ist";
 
 // CSV export endpoint. Same params as the /admin/reports preview, so "Export
 // CSV" is a plain link carrying the active filters.
 export async function GET(req: NextRequest) {
+  let me;
   try {
-    await requireAdminOrManager();
+    me = await requireAdminOrManager();
   } catch (e) {
     if (e instanceof AuthzError) {
       return NextResponse.json({ error: e.message }, { status: 403 });
     }
     throw e;
   }
+  // Managers see only their own team; RLS does not scope the employees table
+  // to a manager's team, so restrict explicitly.
+  const teamScope = me.role === "manager" ? await getMyTeamMemberIds() : null;
 
   const sp = req.nextUrl.searchParams;
   const type = sp.get("type") ?? "daily";
@@ -77,6 +86,26 @@ export async function GET(req: NextRequest) {
       const rows = await eventAttendanceReport(from, to, f);
       csv = eventAttendanceCsv(rows);
       filename = `events_${from}_to_${to}.csv`;
+      break;
+    }
+    case "muster": {
+      const year = Number(sp.get("year") ?? from.slice(0, 4));
+      const month = Number(sp.get("month") ?? from.slice(5, 7));
+      const { dates, rows } = await getMuster(year, month, {
+        ...f,
+        employeeIds: teamScope,
+      });
+      csv = musterCsv(rows, dates);
+      filename = `muster_${year}_${String(month).padStart(2, "0")}.csv`;
+      break;
+    }
+    case "advances": {
+      // ?month=YYYY-MM (defaults to the current IST month).
+      const month = sp.get("month") ?? istToday().slice(0, 7);
+      const monthKey = `${month}-01`;
+      const rows = await listRepaymentsForMonth(monthKey);
+      csv = advanceDeductionsCsv(rows, monthKey);
+      filename = `advance_deductions_${month}.csv`;
       break;
     }
     default:

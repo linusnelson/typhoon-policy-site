@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui";
-import { Building2, Home, MapPin, CalendarRange, AlertCircle } from "lucide-react";
+import { Building2, Home, MapPin, CalendarRange } from "lucide-react";
 import { getDashboardSummary } from "@/lib/data/dashboard";
+import { ExceptionsCard } from "./ExceptionsCard";
 
 function pct(n: number, total: number): string {
   return total ? `${Math.round((n / total) * 100)}%` : "0%";
@@ -99,18 +100,7 @@ export async function DashboardOverview() {
           <h2 className="mb-3 font-display text-lg font-bold text-ink">
             Today&apos;s exceptions
           </h2>
-          <Card className="divide-y divide-gray-100">
-            {s.exceptions.length === 0 && (
-              <div className="p-5 text-sm text-gray-400">No exceptions — all clear.</div>
-            )}
-            {s.exceptions.map((e, i) => (
-              <div key={i} className="flex items-center gap-3 p-3">
-                <AlertCircle className="h-4 w-4 shrink-0 text-warning-deep" />
-                <span className="flex-1 text-sm text-ink">{e.employeeName}</span>
-                <span className="text-xs text-gray-500">{e.reason}</span>
-              </div>
-            ))}
-          </Card>
+          <ExceptionsCard exceptions={s.exceptions} />
         </div>
       </div>
     </div>

@@ -10,6 +10,9 @@ import {
   ShieldAlert,
   Megaphone,
   Wrench,
+  Wallet,
+  Receipt,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { Button, Card } from "@/components/ui";
@@ -18,6 +21,8 @@ import { listNotifications } from "@/lib/data/notifications";
 import {
   markAllNotificationsRead,
   markNotificationRead,
+  clearNotification,
+  clearAllNotifications,
 } from "@/actions/notifications";
 
 const ICONS: Record<string, { icon: LucideIcon; cls: string }> = {
@@ -38,6 +43,13 @@ const ICONS: Record<string, { icon: LucideIcon; cls: string }> = {
   event_removed: { icon: CalendarRange, cls: "text-gray-400" },
   announcement: { icon: Megaphone, cls: "text-brand" },
   regularization_done: { icon: Wrench, cls: "text-info-deep" },
+  advance_applied: { icon: Wallet, cls: "text-info-deep" },
+  advance_approved: { icon: CheckCircle2, cls: "text-success-deep" },
+  advance_rejected: { icon: XCircle, cls: "text-danger-deep" },
+  advance_disbursed: { icon: Wallet, cls: "text-brand" },
+  advance_repayment_due: { icon: AlertTriangle, cls: "text-warning-deep" },
+  advance_closed: { icon: CheckCircle2, cls: "text-success-deep" },
+  payslip_uploaded: { icon: Receipt, cls: "text-brand" },
 };
 
 function iconFor(type: string) {
@@ -47,6 +59,7 @@ function iconFor(type: string) {
 export async function NotificationFeed({ employeeId }: { employeeId: string }) {
   const items = await listNotifications(employeeId);
   const hasUnread = items.some((n) => !n.isRead);
+  const hasItems = items.length > 0;
 
   return (
     <div className="space-y-6">
@@ -59,12 +72,21 @@ export async function NotificationFeed({ employeeId }: { employeeId: string }) {
             Leave approvals, events, reminders and alerts.
           </p>
         </div>
-        {hasUnread && (
-          <form action={markAllNotificationsRead}>
-            <Button variant="secondary" type="submit">
-              Mark all read
-            </Button>
-          </form>
+        {hasItems && (
+          <div className="flex shrink-0 items-center gap-2">
+            {hasUnread && (
+              <form action={markAllNotificationsRead}>
+                <Button variant="secondary" type="submit">
+                  Mark all read
+                </Button>
+              </form>
+            )}
+            <form action={clearAllNotifications}>
+              <Button variant="secondary" type="submit">
+                Clear all
+              </Button>
+            </form>
+          </div>
         )}
       </div>
 
@@ -96,17 +118,30 @@ export async function NotificationFeed({ employeeId }: { employeeId: string }) {
                     {formatIstDateTime(n.createdAt)}
                   </p>
                 </div>
-                {!n.isRead && (
-                  <form action={markNotificationRead} className="shrink-0">
+                <div className="flex shrink-0 items-center gap-1">
+                  {!n.isRead && (
+                    <form action={markNotificationRead}>
+                      <input type="hidden" name="id" value={n.id} />
+                      <button
+                        type="submit"
+                        className="rounded-lg px-2.5 py-1 text-xs font-semibold text-gray-500 transition-colors hover:bg-gray-100 hover:text-ink"
+                      >
+                        Mark read
+                      </button>
+                    </form>
+                  )}
+                  <form action={clearNotification}>
                     <input type="hidden" name="id" value={n.id} />
                     <button
                       type="submit"
-                      className="rounded-lg px-2.5 py-1 text-xs font-semibold text-gray-500 transition-colors hover:bg-gray-100 hover:text-ink"
+                      aria-label="Clear notification"
+                      title="Clear notification"
+                      className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-danger-deep"
                     >
-                      Mark read
+                      <X className="h-4 w-4" />
                     </button>
                   </form>
-                )}
+                </div>
               </div>
             );
           })}

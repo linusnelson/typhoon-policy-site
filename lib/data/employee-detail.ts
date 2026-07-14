@@ -138,9 +138,16 @@ export async function getEmployeeEventHistory(
 }
 
 // ── Location timeline ─────────────────────────────────────────────────────
-// Chronological GPS-stamped events (punches + visit check-in/out) grouped by
-// IST day for a calendar month.
-export type TimelineKind = "punch_in" | "punch_out" | "visit_in" | "visit_out";
+// Chronological GPS-stamped events (punches, visit check-in/out, and fired
+// WFH/visit presence checks) grouped by IST day for a calendar month.
+export type TimelineKind =
+  | "punch_in"
+  | "punch_out"
+  | "visit_in"
+  | "visit_out"
+  | "check_ack"
+  | "check_missed"
+  | "check_pending";
 
 export interface TimelineEvent {
   time: string; // HH:MM IST
@@ -167,7 +174,7 @@ export async function getLocationTimeline(
   const startUtc = istDayBoundsUtc(fromKey).startUtc;
   const endUtc = istDayBoundsUtc(toKey).endUtc;
 
-  const [{ data: punches }, { data: visits }] = await Promise.all([
+  const [{ data: punches }, { data: visits }, { data: checks }] = await Promise.all([
     supabase
       .from("attendance_punches")
       .select("punch_type, work_type, punched_at, lat, lng")
@@ -180,6 +187,15 @@ export async function getLocationTimeline(
       .eq("employee_id", employeeId)
       .gte("visit_date", fromKey)
       .lte("visit_date", toKey),
+    // Fired presence checks only (status <> 'scheduled') — upcoming random
+    // check times stay out of the UI even for admins.
+    supabase
+      .from("wfh_presence_checks")
+      .select("check_date, check_kind, status, notified_at, acknowledged_at, lat, lng")
+      .eq("employee_id", employeeId)
+      .neq("status", "scheduled")
+      .gte("check_date", fromKey)
+      .lte("check_date", toKey),
   ]);
 
   const byDay = new Map<string, TimelineEvent[]>();
@@ -232,6 +248,36 @@ export async function getLocationTimeline(
         lng: v.check_out_lng,
       });
     }
+  }
+
+  for (const c of (checks as
+    | {
+        check_date: string;
+        check_kind: string;
+        status: string;
+        notified_at: string | null;
+        acknowledged_at: string | null;
+        lat: number | null;
+        lng: number | null;
+      }[]
+    | null) ?? []) {
+    // Anchor at the answer time when acknowledged, else when it was sent.
+    const at = c.acknowledged_at ?? c.notified_at;
+    if (!at) continue;
+    const what = c.check_kind === "visit" ? "Visit check" : "WFH check";
+    const [kind, outcome]: [TimelineKind, string] =
+      c.status === "acknowledged"
+        ? ["check_ack", c.lat == null ? "acknowledged (location off)" : "acknowledged"]
+        : c.status === "missed"
+          ? ["check_missed", "missed"]
+          : ["check_pending", "awaiting reply"];
+    add(istDateKey(at), {
+      time: formatIstTime(at),
+      kind,
+      label: `${what} · ${outcome}`,
+      lat: c.lat,
+      lng: c.lng,
+    });
   }
 
   return [...byDay.entries()]

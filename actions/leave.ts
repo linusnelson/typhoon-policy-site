@@ -5,6 +5,7 @@ import { requireAdmin, requireAdminOrManager, AuthzError } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { str, type ActionState } from "@/lib/action-utils";
 import { computeLeaveDays, type LeaveDuration } from "@/lib/engine/leave-days";
+import { istToday } from "@/lib/ist";
 
 function dayDiffInclusive(start: string, end: string): number {
   const ms = new Date(end).getTime() - new Date(start).getTime();
@@ -393,4 +394,281 @@ export async function adminApplyLeave(
   revalidate();
   revalidatePath(`/admin/employees/${employeeId}`);
   return { ok: true, message: `Leave applied and approved (${requested} day(s)).` };
+}
+
+// Admin edits a still-pending leave request (type, dates, duration, reason).
+// Pending requests have no balance deducted yet, so this only rewrites the
+// request row after re-running the same day-count + balance checks as apply.
+// The day count can be overridden (e.g. waive sandwich days) — an override
+// requires a comment, stored on the request as the audit trail.
+// Approved leave can't be edited — cancel and re-apply instead.
+export async function adminEditPendingLeave(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { ok: false, error: (e as AuthzError).message };
+  }
+
+  const id = str(formData, "id");
+  const leaveTypeId = str(formData, "leaveTypeId");
+  const durationRaw = str(formData, "durationType") ?? "full_day";
+  const startDate = str(formData, "startDate");
+  const reason = str(formData, "reason");
+  const daysOverrideRaw = str(formData, "daysOverride");
+  const adminComment = str(formData, "adminComment");
+  let endDate = str(formData, "endDate");
+
+  if (!id) return { ok: false, error: "Missing request id." };
+  if (!leaveTypeId) return { ok: false, error: "Pick a leave type." };
+  if (!startDate) return { ok: false, error: "Pick a start date." };
+  if (!reason) return { ok: false, error: "A reason is required." };
+
+  let daysOverride: number | null = null;
+  if (daysOverrideRaw) {
+    daysOverride = Number(daysOverrideRaw);
+    if (!Number.isFinite(daysOverride) || daysOverride <= 0)
+      return { ok: false, error: "Days count must be a positive number." };
+    if (Math.round(daysOverride * 4) !== daysOverride * 4)
+      return { ok: false, error: "Days count must be in steps of 0.25." };
+    if (!adminComment)
+      return {
+        ok: false,
+        error: "A comment is required when overriding the days count.",
+      };
+  }
+
+  const durationType = (VALID_DURATIONS as string[]).includes(durationRaw)
+    ? (durationRaw as LeaveDuration)
+    : "full_day";
+  if (durationType !== "full_day") endDate = startDate;
+  if (!endDate) endDate = startDate;
+  if (endDate < startDate)
+    return { ok: false, error: "End date can't be before the start date." };
+
+  const supabase = await createClient();
+
+  const { data: req } = await supabase
+    .from("leave_requests")
+    .select("id, employee_id, org_id, status")
+    .eq("id", id)
+    .maybeSingle();
+  if (!req || req.org_id !== admin.org_id)
+    return { ok: false, error: "Leave request not found." };
+  if (req.status !== "pending")
+    return {
+      ok: false,
+      error: "Only pending requests can be edited — cancel and re-apply instead.",
+    };
+
+  const { data: policy } = await supabase
+    .from("leave_policies")
+    .select("is_unlimited, sandwich_rule_enabled, max_consecutive_days")
+    .eq("leave_type_id", leaveTypeId)
+    .maybeSingle();
+
+  const { data: holidayRows } = await supabase
+    .from("holidays")
+    .select("date")
+    .gte("date", startDate)
+    .lte("date", endDate);
+  const holidays = (holidayRows ?? []).map((h) => h.date as string);
+
+  const calc = computeLeaveDays({
+    startKey: startDate,
+    endKey: endDate,
+    durationType,
+    sandwichRuleEnabled: (policy?.sandwich_rule_enabled as boolean) ?? true,
+    holidays,
+  });
+  const requested = daysOverride ?? calc.totalDays;
+  if (requested <= 0)
+    return { ok: false, error: "This range has no working days to deduct." };
+
+  const maxConsecutive = (policy?.max_consecutive_days as number) ?? 0;
+  if (maxConsecutive > 0 && requested > maxConsecutive) {
+    return {
+      ok: false,
+      error: `This leave type allows at most ${maxConsecutive} consecutive day(s).`,
+    };
+  }
+
+  const isUnlimited = (policy?.is_unlimited as boolean) ?? false;
+  if (!isUnlimited) {
+    const year = Number(startDate.slice(0, 4));
+    const { data: bal } = await supabase
+      .from("leave_balances")
+      .select("earned, used, carried_forward")
+      .eq("employee_id", req.employee_id)
+      .eq("leave_type_id", leaveTypeId)
+      .eq("year", year)
+      .maybeSingle();
+    const remaining = bal
+      ? Math.max(
+          ((bal.earned as number) ?? 0) +
+            ((bal.carried_forward as number) ?? 0) -
+            ((bal.used as number) ?? 0),
+          0
+        )
+      : 0;
+    if (remaining < requested) {
+      return {
+        ok: false,
+        error: `Insufficient balance: ${requested} day(s) requested, ${remaining} available.`,
+      };
+    }
+  }
+
+  const { data: updated, error: updErr } = await supabase
+    .from("leave_requests")
+    .update({
+      leave_type_id: leaveTypeId,
+      start_date: startDate,
+      end_date: endDate,
+      duration_type: durationType,
+      reason,
+      days_count: requested,
+      // With an override the auto sandwich count no longer describes the
+      // stored total, so zero it out instead of reporting a misleading number.
+      sandwich_days_included: daysOverride == null ? calc.sandwichDays.length : 0,
+      admin_comment: adminComment ?? null,
+    })
+    .eq("id", id)
+    .eq("status", "pending")
+    .select("id");
+  if (updErr || !updated || updated.length === 0)
+    return { ok: false, error: updErr?.message ?? "Could not update the request." };
+
+  await supabase.from("notifications").insert({
+    employee_id: req.employee_id,
+    org_id: req.org_id,
+    title: "Leave Request Updated",
+    body:
+      `Admin updated your pending leave request — now ${requested} day(s) from ${startDate} to ${endDate}.` +
+      (adminComment ? ` Comment: ${adminComment}` : ""),
+    type: "leave_applied",
+    reference_id: id,
+  });
+
+  revalidate();
+  revalidatePath(`/admin/employees/${req.employee_id}`);
+  return { ok: true, message: `Request updated (${requested} day(s)).` };
+}
+
+// Admin adjusts an employee's available leave for the current year by a signed
+// delta (correction, goodwill grant, backfill). The change lands on
+// leave_balances.earned; every adjustment writes an append-only audit row with
+// a mandatory comment and notifies the employee.
+export async function adminAdjustLeaveBalance(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { ok: false, error: (e as AuthzError).message };
+  }
+
+  const employeeId = str(formData, "employeeId");
+  const leaveTypeId = str(formData, "leaveTypeId");
+  const deltaRaw = str(formData, "delta");
+  const comment = str(formData, "comment");
+
+  if (!employeeId) return { ok: false, error: "Missing employee." };
+  if (!leaveTypeId) return { ok: false, error: "Missing leave type." };
+  if (!comment) return { ok: false, error: "A comment is required." };
+  const delta = Number(deltaRaw);
+  if (!deltaRaw || !Number.isFinite(delta) || delta === 0)
+    return { ok: false, error: "Enter a non-zero adjustment (e.g. 2 or -0.5)." };
+  if (Math.round(delta * 4) !== delta * 4)
+    return { ok: false, error: "Adjustments must be in steps of 0.25." };
+
+  const supabase = await createClient();
+
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("id, org_id")
+    .eq("id", employeeId)
+    .maybeSingle();
+  if (!emp || emp.org_id !== admin.org_id)
+    return { ok: false, error: "Employee not found in your organization." };
+
+  const { data: type } = await supabase
+    .from("leave_types")
+    .select("id, code")
+    .eq("id", leaveTypeId)
+    .maybeSingle();
+  if (!type) return { ok: false, error: "Leave type not found." };
+
+  const year = Number(istToday().slice(0, 4));
+  const { data: bal } = await supabase
+    .from("leave_balances")
+    .select("id, earned, used, carried_forward")
+    .eq("employee_id", employeeId)
+    .eq("leave_type_id", leaveTypeId)
+    .eq("year", year)
+    .maybeSingle();
+
+  const earned = (bal?.earned as number) ?? 0;
+  const used = (bal?.used as number) ?? 0;
+  const carried = (bal?.carried_forward as number) ?? 0;
+  const availableAfter = earned + delta + carried - used;
+  if (availableAfter < 0) {
+    return {
+      ok: false,
+      error: `This would make the available balance negative (${availableAfter.toFixed(2)}).`,
+    };
+  }
+
+  if (bal) {
+    const { error: updErr } = await supabase
+      .from("leave_balances")
+      .update({ earned: earned + delta })
+      .eq("id", bal.id);
+    if (updErr) return { ok: false, error: updErr.message };
+  } else {
+    const { error: insErr } = await supabase.from("leave_balances").insert({
+      employee_id: employeeId,
+      leave_type_id: leaveTypeId,
+      year,
+      earned: delta,
+      used: 0,
+      carried_forward: 0,
+    });
+    if (insErr) return { ok: false, error: insErr.message };
+  }
+
+  const { error: auditErr } = await supabase
+    .from("leave_balance_adjustments")
+    .insert({
+      org_id: admin.org_id,
+      employee_id: employeeId,
+      leave_type_id: leaveTypeId,
+      year,
+      delta,
+      comment,
+      adjusted_by: admin.id,
+    });
+  if (auditErr) return { ok: false, error: auditErr.message };
+
+  const signed = `${delta > 0 ? "+" : ""}${delta}`;
+  await supabase.from("notifications").insert({
+    employee_id: employeeId,
+    org_id: admin.org_id,
+    title: "Leave Balance Adjusted",
+    body: `Admin adjusted your ${type.code} balance by ${signed} day(s) — now ${availableAfter} available. Comment: ${comment}`,
+    type: "leave_applied",
+    reference_id: null,
+  });
+
+  revalidate();
+  revalidatePath(`/admin/employees/${employeeId}`);
+  return {
+    ok: true,
+    message: `${type.code} adjusted by ${signed} day(s) — ${availableAfter} available.`,
+  };
 }

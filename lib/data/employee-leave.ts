@@ -21,6 +21,7 @@ export interface MyLeaveBalance {
 
 export interface MyLeaveRequest {
   id: string;
+  leaveTypeId: string | null;
   leaveTypeCode: string | null;
   leaveTypeName: string | null;
   startDate: string;
@@ -29,6 +30,7 @@ export interface MyLeaveRequest {
   durationType: string;
   status: string;
   reason: string;
+  adminComment: string | null;
   sandwichDaysIncluded: number;
   createdAt: string;
 }
@@ -190,6 +192,51 @@ export async function getApplyLeaveContext(
   };
 }
 
+export interface BalanceAdjustment {
+  id: string;
+  leaveTypeCode: string | null;
+  year: number;
+  delta: number;
+  comment: string;
+  adjustedByName: string | null;
+  createdAt: string;
+}
+
+// Admin balance-adjustment audit trail for one employee, newest first.
+export async function listBalanceAdjustments(
+  employeeId: string
+): Promise<BalanceAdjustment[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("leave_balance_adjustments")
+    .select(
+      "id, year, delta, comment, created_at, leave_types(code), adjuster:employees!leave_balance_adjustments_adjusted_by_fkey(name)"
+    )
+    .eq("employee_id", employeeId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  type Row = {
+    id: string;
+    year: number;
+    delta: number;
+    comment: string;
+    created_at: string;
+    leave_types: { code: string | null } | null;
+    adjuster: { name: string | null } | null;
+  };
+
+  return ((data as Row[] | null) ?? []).map((r) => ({
+    id: r.id,
+    leaveTypeCode: r.leave_types?.code ?? null,
+    year: r.year,
+    delta: r.delta,
+    comment: r.comment,
+    adjustedByName: r.adjuster?.name ?? null,
+    createdAt: r.created_at,
+  }));
+}
+
 export async function getMyLeaveRequests(
   employeeId: string
 ): Promise<MyLeaveRequest[]> {
@@ -197,19 +244,21 @@ export async function getMyLeaveRequests(
   const { data } = await supabase
     .from("leave_requests")
     .select(
-      "id, start_date, end_date, days_count, duration_type, status, reason, sandwich_days_included, created_at, leave_types(code, name)"
+      "id, leave_type_id, start_date, end_date, days_count, duration_type, status, reason, admin_comment, sandwich_days_included, created_at, leave_types(code, name)"
     )
     .eq("employee_id", employeeId)
     .order("created_at", { ascending: false });
 
   type Row = {
     id: string;
+    leave_type_id: string | null;
     start_date: string;
     end_date: string;
     days_count: number | null;
     duration_type: string | null;
     status: string;
     reason: string | null;
+    admin_comment: string | null;
     sandwich_days_included: number | null;
     created_at: string;
     leave_types: { code: string | null; name: string | null } | null;
@@ -217,6 +266,7 @@ export async function getMyLeaveRequests(
 
   return ((data as Row[] | null) ?? []).map((r) => ({
     id: r.id,
+    leaveTypeId: r.leave_type_id,
     leaveTypeCode: r.leave_types?.code ?? null,
     leaveTypeName: r.leave_types?.name ?? null,
     startDate: r.start_date,
@@ -225,6 +275,7 @@ export async function getMyLeaveRequests(
     durationType: r.duration_type ?? "full_day",
     status: r.status,
     reason: r.reason ?? "",
+    adminComment: r.admin_comment,
     sandwichDaysIncluded: r.sandwich_days_included ?? 0,
     createdAt: r.created_at,
   }));

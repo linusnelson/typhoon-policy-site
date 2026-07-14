@@ -2,12 +2,15 @@ import {
   getApplyLeaveContext,
   getMyLeaveBalances,
   getMyLeaveRequests,
+  listBalanceAdjustments,
 } from "@/lib/data/employee-leave";
 import { listCompOffGrants } from "@/lib/data/comp-off";
 import { formatIstDate } from "@/lib/ist";
 import { Badge } from "@/components/ui";
 import { CancelLeaveButton } from "./CancelLeaveButton";
 import { AdminApplyLeaveButton } from "./AdminApplyLeaveButton";
+import { EditLeaveButton } from "./EditLeaveButton";
+import { AdjustBalanceButton } from "./AdjustBalanceButton";
 
 const REQ_TONE: Record<string, "success" | "warning" | "danger" | "neutral"> = {
   approved: "success",
@@ -26,12 +29,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export async function LeavePanel({ employeeId }: { employeeId: string }) {
-  const [balances, compOffs, requests, applyCtx] = await Promise.all([
-    getMyLeaveBalances(employeeId),
-    listCompOffGrants(employeeId),
-    getMyLeaveRequests(employeeId),
-    getApplyLeaveContext(employeeId),
-  ]);
+  const [balances, compOffs, requests, applyCtx, adjustments] =
+    await Promise.all([
+      getMyLeaveBalances(employeeId),
+      listCompOffGrants(employeeId),
+      getMyLeaveRequests(employeeId),
+      getApplyLeaveContext(employeeId),
+      listBalanceAdjustments(employeeId),
+    ]);
 
   const applyTypes = applyCtx.types.map((t) => ({
     id: t.id,
@@ -70,9 +75,50 @@ export async function LeavePanel({ employeeId }: { employeeId: string }) {
                   Earned {(b.earned + b.carriedForward).toFixed(1)} · Used{" "}
                   {b.used.toFixed(1)}
                 </div>
+                {!b.isUnlimited && (
+                  <AdjustBalanceButton
+                    employeeId={employeeId}
+                    balance={{
+                      typeId: b.typeId,
+                      code: b.code,
+                      name: b.name,
+                      remaining: b.remaining,
+                    }}
+                  />
+                )}
               </div>
             ))}
           </div>
+        )}
+        {adjustments.length > 0 && (
+          <details className="mt-3">
+            <summary className="cursor-pointer text-xs font-semibold text-gray-500 hover:text-ink">
+              Adjustment history ({adjustments.length})
+            </summary>
+            <ul className="mt-2 divide-y divide-gray-100 rounded-card border border-gray-200">
+              {adjustments.map((a) => (
+                <li
+                  key={a.id}
+                  className="flex items-center justify-between gap-3 px-4 py-2"
+                >
+                  <div className="min-w-0">
+                    <div className="text-sm text-ink">
+                      <span className="font-medium">
+                        {a.leaveTypeCode ?? "—"}{" "}
+                        {a.delta > 0 ? `+${a.delta}` : a.delta} day(s)
+                      </span>{" "}
+                      · {a.comment}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {formatIstDate(a.createdAt)}
+                      {a.adjustedByName ? ` · by ${a.adjustedByName}` : ""} ·{" "}
+                      {a.year}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </details>
         )}
       </Section>
 
@@ -140,11 +186,31 @@ export async function LeavePanel({ employeeId }: { employeeId: string }) {
                         .filter(Boolean)
                         .join(" · ")}
                     </div>
+                    {r.adminComment && (
+                      <div className="truncate text-xs text-brand">
+                        Admin: {r.adminComment}
+                      </div>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Badge tone={REQ_TONE[r.status] ?? "neutral"}>
                       {r.status}
                     </Badge>
+                    {r.status === "pending" && (
+                      <EditLeaveButton
+                        request={{
+                          id: r.id,
+                          leaveTypeId: r.leaveTypeId,
+                          durationType: r.durationType,
+                          startDate: r.startDate,
+                          endDate: r.endDate,
+                          reason: r.reason,
+                          daysCount: r.daysCount,
+                          adminComment: r.adminComment,
+                        }}
+                        types={applyTypes}
+                      />
+                    )}
                     {(r.status === "approved" || r.status === "pending") && (
                       <CancelLeaveButton id={r.id} />
                     )}

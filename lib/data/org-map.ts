@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { isServiceAccount } from "@/lib/config";
+import { signSelfieUrls } from "@/lib/supabase/storage";
 
 // Org chart for the web Org map. Backed by the SECURITY DEFINER `org_chart`
 // RPC so any authenticated org member can see the full directory without
@@ -59,12 +60,12 @@ interface RawChart {
   employees: RawPerson[];
 }
 
-function toPerson(e: RawPerson): Person {
+function toPerson(e: RawPerson, photos: Map<string, string>): Person {
   return {
     id: e.id,
     name: e.name,
     designation: e.designation,
-    photoUrl: e.photo_url,
+    photoUrl: e.photo_url ? photos.get(e.photo_url) ?? null : null,
     role: e.role,
   };
 }
@@ -81,7 +82,14 @@ export async function getOrgChart(): Promise<OrgChart> {
   // Drop service/role mailboxes (e.g. admin@…) entirely — they aren't people and
   // shouldn't appear in leadership, as a manager, or anywhere in the chart.
   const people = raw.employees.filter((e) => !isServiceAccount(e.email));
-  const leadership = people.filter((e) => e.role === "admin").map(toPerson);
+
+  // Avatars are bare paths in the private `selfies` bucket — sign them all in
+  // one request, then resolve per person.
+  const photos = await signSelfieUrls(people.map((e) => e.photo_url));
+
+  const leadership = people
+    .filter((e) => e.role === "admin")
+    .map((e) => toPerson(e, photos));
 
   // Teams keyed by their owning department; managers resolved from people.
   const personById = new Map(people.map((p) => [p.id, p]));
@@ -106,11 +114,11 @@ export async function getOrgChart(): Promise<OrgChart> {
             e.role !== "admin" &&
             e.id !== t.manager_id
         )
-        .map(toPerson);
+        .map((e) => toPerson(e, photos));
       return {
         id: t.id,
         name: t.name,
-        manager: managerRaw ? toPerson(managerRaw) : null,
+        manager: managerRaw ? toPerson(managerRaw, photos) : null,
         members,
       };
     });
@@ -123,14 +131,14 @@ export async function getOrgChart(): Promise<OrgChart> {
           e.role !== "admin" &&
           (!e.team_id || !activeTeamIds.has(e.team_id))
       )
-      .map(toPerson);
+      .map((e) => toPerson(e, photos));
 
     return { id: d.id, name: d.name, teams, directMembers };
   });
 
   const orphans = people
     .filter((e) => e.role !== "admin" && !e.department_id)
-    .map(toPerson);
+    .map((e) => toPerson(e, photos));
 
   return { leadership, departments, orphans };
 }

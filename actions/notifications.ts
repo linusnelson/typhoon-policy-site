@@ -33,3 +33,28 @@ export async function markAllNotificationsRead(): Promise<void> {
 
   revalidatePath("/notifications");
 }
+
+// Delete a single notification. RLS scopes the delete to the owner.
+export async function clearNotification(formData: FormData): Promise<void> {
+  const me = await requireEmployee();
+  const id = str(formData, "id");
+  if (!id) throw new AuthzError("Missing notification id.");
+
+  const supabase = await createClient();
+  await supabase
+    .from("notifications")
+    .delete()
+    .eq("id", id)
+    .eq("employee_id", me.id);
+
+  revalidatePath("/notifications");
+}
+
+// Delete every notification for the signed-in employee.
+export async function clearAllNotifications(): Promise<void> {
+  const me = await requireEmployee();
+  const supabase = await createClient();
+  await supabase.from("notifications").delete().eq("employee_id", me.id);
+
+  revalidatePath("/notifications");
+}

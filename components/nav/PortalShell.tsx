@@ -6,17 +6,24 @@ import { PanelLeftClose, PanelLeft, Menu, X } from "lucide-react";
 import { Brand } from "@/components/Brand";
 import { SidebarNav } from "@/components/nav/AppSidebar";
 import { AdminPageTitle } from "@/components/nav/AdminPageTitle";
-import type { EmployeeRole } from "@/lib/types";
+import type { EmployeeRole, OrgModules } from "@/lib/types";
 
 // One portal shell for every role: a collapsible desktop rail, an off-canvas
 // mobile drawer, and a sticky header. The header's right side (notification bell
 // + user menu) is rendered on the server and passed in as `headerRight`.
+// `modules` (org feature flags, loaded server-side) gates module nav items.
 export function PortalShell({
   role,
+  modules,
+  isExpenseApprover = false,
+  hideSelfServe = false,
   headerRight,
   children,
 }: {
   role: EmployeeRole;
+  modules?: OrgModules;
+  isExpenseApprover?: boolean;
+  hideSelfServe?: boolean;
   headerRight: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -49,7 +56,13 @@ export function PortalShell({
             )}
           </button>
         </div>
-        <SidebarNav role={role} collapsed={collapsed} />
+        <SidebarNav
+          role={role}
+          modules={modules}
+          isExpenseApprover={isExpenseApprover}
+          hideSelfServe={hideSelfServe}
+          collapsed={collapsed}
+        />
       </aside>
 
       {/* Mobile drawer */}
@@ -71,7 +84,13 @@ export function PortalShell({
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <SidebarNav role={role} onNavigate={() => setMobileOpen(false)} />
+            <SidebarNav
+              role={role}
+              modules={modules}
+              isExpenseApprover={isExpenseApprover}
+              hideSelfServe={hideSelfServe}
+              onNavigate={() => setMobileOpen(false)}
+            />
           </aside>
         </div>
       )}

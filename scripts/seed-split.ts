@@ -25,7 +25,8 @@ const OBSOLETE_SLUGS = ["hr-policy-manual", "preamble-scope-definitions"];
 
 // One document per file. Slugs are stable so re-seeding updates in place
 // (and keeps existing signatures/version rows attached to the same document).
-const DOCS: { file: string; title: string; slug: string }[] = [
+// `effective` overrides the default EFFECTIVE date for later-issued policies.
+const DOCS: { file: string; title: string; slug: string; effective?: string }[] = [
   {
     file: "Typhoon_Electronics_Attendance_and_Leave_Policy.md",
     title: "Attendance & Leave Policy",
@@ -50,6 +51,14 @@ const DOCS: { file: string; title: string; slug: string }[] = [
     file: "Typhoon_Electronics_Equal_Opportunity_Policy.md",
     title: "Equal Opportunity & Anti-Discrimination Policy",
     slug: "equal-opportunity",
+  },
+  {
+    // Renamed from "Employee Advance Policy" — the slug stays stable so the
+    // existing draft version updates in place.
+    file: "Typhoon_Electronics_Employee_Loans_and_Advances_Policy.md",
+    title: "Employee Loans & Advances Policy",
+    slug: "employee-advance",
+    effective: "2026-07-01",
   },
 ];
 
@@ -139,51 +148,53 @@ async function main() {
       documentId = data.id;
     }
 
-    // Upsert version 1.0.
+    // Upsert version 1.0 as a DRAFT — publication is an explicit admin action
+    // in the portal (Admin → Policies → document → Publish). The seed never
+    // publishes and never touches current_version_id.
+    //
+    // If the version was already published by an admin, its content is left
+    // untouched: updating a published version would change its content_hash
+    // and orphan every signature bound to it.
     const versionFields = {
       content_md: content,
       content_hash: hash,
-      change_summary: "Initial publication",
-      effective_date: EFFECTIVE,
-      status: "published" as const,
-      published_at: new Date().toISOString(),
+      change_summary: "Initial draft (seeded)",
+      effective_date: def.effective ?? EFFECTIVE,
+      status: "draft" as const,
+      published_at: null,
     };
-    let versionId: string;
     const { data: existingVersion } = await db
       .from("policy_versions")
-      .select("id")
+      .select("id, status, content_hash")
       .eq("document_id", documentId)
       .eq("version_label", VERSION)
       .maybeSingle();
     if (existingVersion) {
-      versionId = existingVersion.id;
+      if (existingVersion.status !== "draft") {
+        const changed = existingVersion.content_hash !== hash;
+        console.log(
+          `↷ ${def.title.padEnd(48)} (${def.slug})  v${VERSION} is ${existingVersion.status} — left untouched` +
+            (changed ? " ⚠ local file differs; publish a new version instead" : "")
+        );
+        continue;
+      }
       const { error } = await db
         .from("policy_versions")
         .update(versionFields)
-        .eq("id", versionId);
+        .eq("id", existingVersion.id);
       if (error) throw error;
     } else {
-      const { data, error } = await db
-        .from("policy_versions")
-        .insert({
-          document_id: documentId,
-          org_id: orgId,
-          version_label: VERSION,
-          requires_resign: true,
-          ...versionFields,
-        })
-        .select("id")
-        .single();
+      const { error } = await db.from("policy_versions").insert({
+        document_id: documentId,
+        org_id: orgId,
+        version_label: VERSION,
+        requires_resign: true,
+        ...versionFields,
+      });
       if (error) throw error;
-      versionId = data.id;
     }
 
-    await db
-      .from("policy_documents")
-      .update({ current_version_id: versionId })
-      .eq("id", documentId);
-
-    console.log(`✓ ${def.title.padEnd(48)} (${def.slug})  ${content.length} chars`);
+    console.log(`✓ ${def.title.padEnd(48)} (${def.slug})  ${content.length} chars (draft)`);
   }
 
   console.log(`\n✅ Seeded ${DOCS.length} policy documents from ${POLICIES_DIR}/`);

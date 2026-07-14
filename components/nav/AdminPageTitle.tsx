@@ -2,10 +2,15 @@
 
 import { usePathname } from "next/navigation";
 import { navForRole } from "@/lib/nav";
+import { DEFAULT_MODULES, type OrgModules } from "@/lib/types";
 
 // Flat label lookup across all nav items (labels are role-independent, so the
-// admin set is a superset that covers every route).
-const ITEMS = navForRole("admin").flatMap((g) => g.items);
+// admin set is a superset that covers every route). Every module/capability is
+// forced ON — this is a title lookup, not access control.
+const ALL_MODULES_ON = Object.fromEntries(
+  Object.keys(DEFAULT_MODULES).map((k) => [k, true])
+) as OrgModules;
+const ITEMS = navForRole("admin", ALL_MODULES_ON, true).flatMap((g) => g.items);
 
 function titleFor(pathname: string): string {
   // Longest matching href wins (e.g. /admin/leave/comp-off over /admin/leave).

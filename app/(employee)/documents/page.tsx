@@ -1,27 +1,76 @@
 import Link from "next/link";
+import { Download, FileText, Receipt, Wallet } from "lucide-react";
 import { getCurrentEmployee, getDocumentsWithStatus } from "@/lib/policies";
-import { Badge, Banner, Card } from "@/components/ui";
+import { getOrgModules } from "@/lib/data/org";
+import { getMyAdvances } from "@/lib/data/advances";
+import { getMyPayslips } from "@/lib/data/payslips";
+import { signPayslipUrl } from "@/lib/supabase/storage";
+import { Badge, Banner, Button, Card } from "@/components/ui";
+import { TabNav } from "@/components/ui/Tabs";
+import { AdvanceStatusBadge } from "@/components/employee/AdvanceStatusBadge";
 import { isServiceAccount } from "@/lib/config";
+import { formatINR, formatMonth } from "@/lib/format";
+import { formatIstDate } from "@/lib/ist";
 import type { DocumentWithStatus } from "@/lib/types";
 
-export default async function DashboardPage() {
+// The employee documents hub: company policies to sign, payslips uploaded by
+// HR, and loan/advance statements — one tab each (module-gated).
+export default async function DocumentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
   const employee = (await getCurrentEmployee())!; // layout guarantees presence
-  const docs = await getDocumentsWithStatus(employee);
+  const modules = await getOrgModules(employee.org_id);
+  const { tab = "policies" } = await searchParams;
 
-  const isService = isServiceAccount(employee.email);
-  const pending = docs.filter((d) => d.currentVersion && !d.signature);
+  const tabs = [
+    { key: "policies", label: "Policies" },
+    ...(modules.payslips ? [{ key: "payslips", label: "Payslips" }] : []),
+    ...(modules.advances ? [{ key: "loans", label: "Loans & Advances" }] : []),
+  ];
+  const active = tabs.some((t) => t.key === tab) ? tab : "policies";
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-bold text-ink">
-          Policy documents
-        </h1>
+        <h1 className="font-display text-2xl font-bold text-ink">My Documents</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Read each document and sign to acknowledge it.
+          Policies to sign, payslips, and loan/advance statements.
         </p>
       </div>
 
+      <TabNav tabs={tabs} />
+
+      {active === "payslips" ? (
+        <PayslipsTab employeeId={employee.id} />
+      ) : active === "loans" ? (
+        <LoansTab employeeId={employee.id} />
+      ) : (
+        <PoliciesTab employee={employee} />
+      )}
+    </div>
+  );
+}
+
+// ── Policies ─────────────────────────────────────────────────────────────────
+
+async function PoliciesTab({
+  employee,
+}: {
+  employee: NonNullable<Awaited<ReturnType<typeof getCurrentEmployee>>>;
+}) {
+  const all = await getDocumentsWithStatus(employee);
+  // Employees only see PUBLISHED policies — unpublished drafts are not
+  // signable (their content is RLS-hidden) and listing them made the
+  // "all caught up" banner read as wrong. Admins manage drafts in
+  // /admin/policies.
+  const docs = all.filter((d) => d.currentVersion);
+  const isService = isServiceAccount(employee.email);
+  const pending = docs.filter((d) => !d.signature);
+
+  return (
+    <div className="space-y-4">
       {isService ? (
         <Banner tone="info">
           This is a service account — signing is not required. You can read all
@@ -93,5 +142,107 @@ function DocumentRow({
         </div>
       </Card>
     </Link>
+  );
+}
+
+// ── Payslips ─────────────────────────────────────────────────────────────────
+
+async function PayslipsTab({ employeeId }: { employeeId: string }) {
+  const slips = await getMyPayslips(employeeId);
+  const signed = new Map<string, string>();
+  await Promise.all(
+    slips.map(async (s) => {
+      const url = await signPayslipUrl(s.file_path);
+      if (url) signed.set(s.id, url);
+    })
+  );
+
+  if (slips.length === 0) {
+    return (
+      <Card className="p-10 text-center text-sm text-gray-400">
+        <Receipt className="mx-auto mb-2 h-6 w-6 text-gray-300" />
+        No payslips yet — they&apos;ll appear here once HR uploads them.
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {slips.map((s) => {
+        const url = signed.get(s.id);
+        return (
+          <Card key={s.id} className="flex items-center justify-between gap-3 p-4">
+            <div>
+              <div className="font-display font-bold text-ink">
+                {formatMonth(s.period_month)}
+              </div>
+              <div className="text-xs text-gray-400">
+                Uploaded {formatIstDate(s.uploaded_at)}
+              </div>
+            </div>
+            {url && (
+              <a href={url} target="_blank" rel="noreferrer">
+                <Button variant="secondary" type="button">
+                  <Download className="h-4 w-4" /> Download
+                </Button>
+              </a>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Loans & Advances statements ──────────────────────────────────────────────
+
+async function LoansTab({ employeeId }: { employeeId: string }) {
+  const advances = await getMyAdvances(employeeId);
+  // A statement exists once the request is approved.
+  const withStatement = advances.filter((a) =>
+    ["approved", "repaying", "closed"].includes(a.status)
+  );
+
+  if (withStatement.length === 0) {
+    return (
+      <Card className="p-10 text-center text-sm text-gray-400">
+        <Wallet className="mx-auto mb-2 h-6 w-6 text-gray-300" />
+        No loan/advance statements yet — one is generated here as soon as a
+        request is approved.
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {withStatement.map((a) => (
+        <Card key={a.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-display font-bold text-ink">
+                {formatINR(a.amount)}
+              </span>
+              <AdvanceStatusBadge status={a.status} />
+            </div>
+            <div className="text-xs text-gray-400">
+              {a.installments} month{a.installments === 1 ? "" : "s"}
+              {a.reviewed_at && <> · approved {formatIstDate(a.reviewed_at)}</>}
+              {a.status === "repaying" && (
+                <> · outstanding {formatINR(a.outstanding)}</>
+              )}
+            </div>
+          </div>
+          <a
+            href={`/documents/loans/${a.id}/pdf`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Button variant="secondary" type="button">
+              <FileText className="h-4 w-4" /> Loan statement (PDF)
+            </Button>
+          </a>
+        </Card>
+      ))}
+    </div>
   );
 }

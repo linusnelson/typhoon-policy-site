@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Open_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import TransientErrorGuard from "@/components/TransientErrorGuard";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -39,7 +40,10 @@ export default function RootLayout({
       lang="en"
       className={`${spaceGrotesk.variable} ${openSans.variable} ${jetBrainsMono.variable}`}
     >
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <TransientErrorGuard />
+        {children}
+      </body>
     </html>
   );
 }

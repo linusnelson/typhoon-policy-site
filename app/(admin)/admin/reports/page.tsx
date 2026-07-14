@@ -7,7 +7,14 @@ import { AnalyticsControls } from "@/components/admin/reports/AnalyticsControls"
 import { ReportsAnalytics } from "@/components/admin/reports/ReportsAnalytics";
 import type { ReportType } from "@/lib/data/report-types";
 
-const VALID: ReportType[] = ["daily", "weekly", "monthly", "visits", "events"];
+const VALID: ReportType[] = [
+  "daily",
+  "weekly",
+  "monthly",
+  "muster",
+  "visits",
+  "events",
+];
 const TABS = [
   { key: "overview", label: "Overview" },
   { key: "detailed", label: "Detailed / Export" },

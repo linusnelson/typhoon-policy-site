@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth";
 import { getOrg } from "@/lib/data/org";
+import { SERVICE_ACCOUNT_EMAILS } from "@/lib/config";
 import { Card } from "@/components/ui";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 
@@ -17,7 +18,7 @@ export default async function SettingsPage() {
       </div>
 
       {org ? (
-        <SettingsForm org={org} />
+        <SettingsForm org={org} serviceAccounts={SERVICE_ACCOUNT_EMAILS} />
       ) : (
         <Card className="p-8 text-center text-sm text-gray-400">
           Organization not found.

@@ -391,3 +391,37 @@ export async function resendInvite(
     message: "Fresh invite link generated — valid for 7 days.",
   };
 }
+
+// Unlock an employee's bank details so they can re-edit them once on /profile
+// (the row was born locked; their next save re-locks it — see clock_bays
+// migration 20260712000000).
+export async function unlockBankDetails(formData: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const employeeId = str(formData, "employeeId");
+  if (!employeeId) throw new AuthzError("Missing employee id.");
+
+  const supabase = createAdminClient();
+
+  // Org-scope guard: only touch rows in the admin's own org.
+  const { data: row } = await supabase
+    .from("employee_bank_details")
+    .select("id, org_id")
+    .eq("employee_id", employeeId)
+    .maybeSingle();
+  if (!row || row.org_id !== admin.org_id) {
+    throw new AuthzError("Bank details not found in your organization.");
+  }
+
+  const { error } = await supabase
+    .from("employee_bank_details")
+    .update({
+      locked: false,
+      updated_by: admin.id,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", row.id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/admin/employees/${employeeId}`);
+  revalidatePath("/profile");
+}

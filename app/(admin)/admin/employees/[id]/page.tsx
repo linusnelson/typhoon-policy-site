@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { getEmployee, derivedStatus } from "@/lib/data/employees";
-import { setEmployeeStatus } from "@/actions/employees";
+import { getBankDetailsForEmployee } from "@/lib/data/bank-details";
+import { setEmployeeStatus, unlockBankDetails } from "@/actions/employees";
 import { AccountActions } from "@/components/admin/AccountActions";
 import { AttendancePanel } from "@/components/admin/employee/AttendancePanel";
 import { LeavePanel } from "@/components/admin/employee/LeavePanel";
@@ -10,8 +11,11 @@ import { RegularizationsPanel } from "@/components/admin/employee/Regularization
 import { VisitsEventsPanel } from "@/components/admin/employee/VisitsEventsPanel";
 import { SecurityPanel } from "@/components/admin/employee/SecurityPanel";
 import { TimelinePanel } from "@/components/admin/employee/TimelinePanel";
+import { CompensationPanel } from "@/components/admin/employee/CompensationPanel";
+import { getEmployeeOutstandingAdvance } from "@/lib/data/advances";
+import { formatINR } from "@/lib/format";
 import { formatIstDate, formatIstDateTime, istToday } from "@/lib/ist";
-import { Badge, Button, Card } from "@/components/ui";
+import { Badge, Banner, Button, Card } from "@/components/ui";
 import { TabNav } from "@/components/ui/Tabs";
 
 const STATUS = {
@@ -26,6 +30,7 @@ const TABS = [
   { key: "timeline", label: "Timeline" },
   { key: "leave", label: "Leave" },
   { key: "visits", label: "Visits & Events" },
+  { key: "compensation", label: "Compensation" },
   { key: "security", label: "Security" },
   { key: "regularizations", label: "Regularizations" },
 ];
@@ -56,9 +61,14 @@ export default async function EmployeeDetailPage({
   const st = derivedStatus(e);
   const isActive = st === "active";
   const month = ym ?? istToday().slice(0, 7); // YYYY-MM
+  const outstandingAdvance = await getEmployeeOutstandingAdvance(e.id);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    // The timeline tab renders a two-column layout (events + map panel) and
+    // needs more width than the other tabs.
+    <div
+      className={`mx-auto space-y-6 ${tab === "timeline" ? "max-w-5xl" : "max-w-3xl"}`}
+    >
       <Link
         href="/admin/employees"
         className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-ink"
@@ -101,6 +111,18 @@ export default async function EmployeeDetailPage({
         </div>
       </Card>
 
+      {outstandingAdvance > 0 && (
+        <Banner tone="warning">
+          This employee has an outstanding loan/advance of{" "}
+          <strong>{formatINR(outstandingAdvance)}</strong>
+          {isActive && <> — recover it before deactivating</>}. See{" "}
+          <Link href="/admin/advances?tab=repaying" className="font-semibold underline">
+            Advances
+          </Link>
+          .
+        </Banner>
+      )}
+
       <TabNav tabs={TABS} />
 
       {tab === "attendance" ? (
@@ -118,6 +140,10 @@ export default async function EmployeeDetailPage({
       ) : tab === "visits" ? (
         <Card className="p-6">
           <VisitsEventsPanel employeeId={e.id} />
+        </Card>
+      ) : tab === "compensation" ? (
+        <Card className="p-6">
+          <CompensationPanel employeeId={e.id} />
         </Card>
       ) : tab === "security" ? (
         <Card className="p-6">
@@ -149,9 +175,54 @@ export default async function EmployeeDetailPage({
             </div>
           </Card>
 
+          <BankDetailsCard employeeId={e.id} />
+
           <AccountActions employeeId={e.id} status={st} />
         </>
       )}
     </div>
+  );
+}
+
+// Bank details for payslips — employee-entered, one-time. When locked, the
+// admin can unlock so the employee gets exactly one more edit (their save
+// re-locks the row).
+async function BankDetailsCard({ employeeId }: { employeeId: string }) {
+  const bank = await getBankDetailsForEmployee(employeeId);
+  return (
+    <Card className="p-6">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="font-display font-bold text-ink">
+          Bank details (payslips)
+        </h2>
+        {bank &&
+          (bank.locked ? (
+            <form action={unlockBankDetails}>
+              <input type="hidden" name="employeeId" value={employeeId} />
+              <Button variant="secondary" type="submit">
+                Unlock for employee editing
+              </Button>
+            </form>
+          ) : (
+            <Badge tone="warning">Unlocked — awaiting employee edit</Badge>
+          ))}
+      </div>
+      {bank ? (
+        <div className="grid gap-x-8 sm:grid-cols-2">
+          <Row label="Bank name" value={bank.bankName} />
+          <Row
+            label="Account number"
+            value={`•••• ${bank.bankAccountNo.slice(-4)}`}
+          />
+          <Row label="PAN" value={bank.pan} />
+          <Row label="Last updated" value={formatIstDateTime(bank.updatedAt)} />
+        </div>
+      ) : (
+        <p className="text-sm text-gray-400">
+          Not provided yet — the employee fills these in once on their Profile
+          page. Payslips print “—” until then.
+        </p>
+      )}
+    </Card>
   );
 }

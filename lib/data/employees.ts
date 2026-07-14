@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { EmployeeRow } from "@/lib/data/employee-model";
+import { signSelfieUrls } from "@/lib/supabase/storage";
 
 // Re-export the client-safe model so server callers have one import site.
 export {
@@ -46,7 +47,15 @@ export async function listEmployees(): Promise<EmployeeRow[]> {
     supabase.from("employees").select(SELECT).order("employee_code"),
     locationMap(),
   ]);
-  return ((data as RawRow[]) ?? []).map((r) => flatten(r, locs));
+  const rows = ((data as RawRow[]) ?? []).map((r) => flatten(r, locs));
+
+  // photo_url is a bare path in the private `selfies` bucket; replace it with a
+  // signed display URL (or null) so the avatar renders instead of 404ing.
+  const photos = await signSelfieUrls(rows.map((r) => r.photo_url));
+  for (const r of rows) {
+    r.photo_url = r.photo_url ? photos.get(r.photo_url) ?? null : null;
+  }
+  return rows;
 }
 
 export interface EmployeeOption {

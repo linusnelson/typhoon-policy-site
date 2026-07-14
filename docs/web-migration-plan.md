@@ -377,3 +377,66 @@ pages remain schedule/history only.
 - **Camera capture split** (`web_camera*.dart`) is **Flutter-web-only** (selfie
   capture on the employee PWA). Stays Flutter; no web-panel equivalent — the
   Next.js site never captures selfies.
+
+---
+
+## 12. Portal reframing + Employee Advances module (2026-07-07)
+
+The site is now formally the **company internal portal** (not just policies):
+`admin@typhoonelec.com` is both the service account (signing-exempt, see
+`lib/config.ts`) AND a working admin login (active `employees` row exists in dev;
+provision the same on prod at deploy).
+
+### Org module flags
+Web-owned feature flags live namespaced at `organizations.settings.modules`
+(`advances` / `announcements` / `payslips`). **Never whole-map-write `settings`** —
+Flutter read-modify-writes its own keys (`last_accrual_month`,
+`last_absent_processed`) on the same column; `actions/settings.ts` does a fresh
+read + merge. Flags gate nav (`lib/nav.ts` `navForRole(role, modules)`, threaded
+from the layouts through `PortalShell`) and pages 404 server-side via
+`moduleEnabled()` (`lib/data/org.ts`).
+
+### Employee Advances (greenfield, web-only module)
+- **Schema** (clock_bays migrations `20260707000000..2`): `employee_compensation`
+  (salary, RLS admin-or-self ONLY — never on the org-readable `employees` row),
+  `advance_policies` (flat cap and/or salary-multiple, tenure/cooldown/concurrency,
+  max installments, deduction ≤ % of salary), `advance_requests`
+  (`pending|approved|rejected|repaying|closed|cancelled` — no `disbursed` state;
+  disbursal goes straight to `repaying`), `advance_repayments` (installment rows,
+  `due_month` CHECKed to month start; outstanding = SUM of `scheduled` rows —
+  waived rows never hold an advance open). Employee UPDATE WITH CHECK restricts
+  status to `pending|cancelled` (self-approval blocked — fixed in `...000002`).
+- **Engine** `lib/engine/advance.ts` (+ tests, `npm test` = `tsx --test`):
+  eligibility, min-installments from the deduction cap, paise-exact schedule
+  (last row absorbs rounding), outstanding/close rules.
+- **Flow**: employee applies (`/advances/apply`, live preview runs the same
+  engine the server re-validates with) → **admin-only** approve/reject with a
+  decision-stats panel (salary, tenure, cap, % of salary, per-installment,
+  other open advances) → disburse generates the schedule → mark paid / waive /
+  settle-all → auto-close + notification. Monthly deductions tab + Zoho CSV
+  (`/admin/reports/export?type=advances&month=YYYY-MM`).
+- All writes run through the session client (RLS) with `.eq(status)` guarded
+  transitions; verified end-to-end on dev including RLS attack checks.
+- Employee-detail page warns when deactivating with an outstanding advance.
+
+### Still pending for prod
+Apply migrations `20260707000000..2` to prod, confirm the
+`admin@typhoonelec.com` employees row exists there, then push (Vercel deploy).
+
+### Payslips module + salary UI relocation (2026-07-07, later)
+- **Payslips shipped** (migrations `20260707100000..1`, dev only): `payslips`
+  table (admin-or-self RLS, one row per employee-month) + private `payslips`
+  Storage bucket (`<employee_id>/<YYYY-MM>.pdf`; `can_read_payslip` /
+  `can_write_payslip` SECURITY DEFINER helpers — same signed-URL gotcha as
+  selfies). Admin uploads on `/admin/payslips` month grid (PDF ≤ 5 MB,
+  upsert-replace, delete); employees download own on `/payslips`;
+  `payslip_uploaded` notification. Module flag `payslips` toggle is now live.
+- **Salary UI moved out of the Advances area**: the salaries register left
+  `/admin/advances/policy` (policies only now); per-employee salary history +
+  set form live on the **Compensation tab** of `/admin/employees/[id]`. The
+  advance decision stats show NO salary figures (tenure, cap, per-installment ₹,
+  open advances only) — the engine still enforces salary-based rules and
+  surfaces violations as eligibility flags.
+- **Testing gotcha**: session-client `notifications.insert(...).select()` fails
+  RLS — RETURNING requires the self-only SELECT policy. App code inserts without
+  RETURNING (fine); never add `.select()` to cross-employee notification inserts.
