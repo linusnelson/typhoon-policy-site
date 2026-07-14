@@ -178,6 +178,12 @@ const NAV: NavGroup[] = [
         icon: Gift,
         roles: ["admin"],
       },
+      {
+        label: "Leave policies",
+        href: "/admin/leave/policies",
+        icon: SlidersHorizontal,
+        roles: ["admin"],
+      },
     ],
   },
   {

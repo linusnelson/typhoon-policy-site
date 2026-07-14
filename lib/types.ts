@@ -123,6 +123,26 @@ export interface LeaveType {
   is_active: boolean;
 }
 
+export interface LeavePolicy {
+  id: string;
+  org_id: string;
+  leave_type_id: string;
+  accrual_type: string; // 'monthly' | 'yearly' | 'unlimited' | 'manual'
+  accrual_per_month: number;
+  annual_quota: number;
+  max_carry_forward: number;
+  carry_forward_expiry_months: number;
+  is_unlimited: boolean;
+  min_days_per_request: number;
+  requires_approval: boolean;
+  effective_date: string | null;
+  hide_from_employee: boolean;
+  sandwich_rule_enabled: boolean;
+  allow_half_day: boolean;
+  allow_quarter_day: boolean;
+  min_advance_days: number;
+}
+
 export interface LeaveBalance {
   id: string;
   employee_id: string;
