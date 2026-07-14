@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin, AuthzError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { HOLIDAYS_TAG } from "@/lib/data/holidays";
 import { type ActionState, str, num, bool } from "@/lib/action-utils";
 
 // Create or update a location (geofence + check-in config), org-scoped.
@@ -50,6 +51,7 @@ export async function saveLocation(
     if (error) return { ok: false, error: error.message };
   }
 
+  revalidateTag(HOLIDAYS_TAG); // location names are joined into the holiday list
   revalidatePath("/admin/locations");
   return { ok: true, message: id ? "Location updated." : "Location added." };
 }
@@ -67,5 +69,6 @@ export async function setLocationActive(formData: FormData): Promise<void> {
     .eq("org_id", admin.org_id);
   if (error) throw new Error(error.message);
 
+  revalidateTag(HOLIDAYS_TAG); // location names are joined into the holiday list
   revalidatePath("/admin/locations");
 }

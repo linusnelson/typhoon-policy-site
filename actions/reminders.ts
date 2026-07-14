@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin, AuthzError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ORG_SETTINGS_TAG } from "@/lib/data/org";
 import { type ActionState, bool, num } from "@/lib/action-utils";
 import { DEFAULT_REMINDERS, type RemindersConfig } from "@/lib/types";
 
@@ -103,6 +104,7 @@ export async function updateReminders(
     .eq("id", admin.org_id);
   if (error) return { ok: false, error: error.message };
 
+  revalidateTag(ORG_SETTINGS_TAG); // reminders live in settings.reminders
   revalidatePath("/admin/announcements");
   return { ok: true, message: "Reminder settings saved." };
 }

@@ -118,6 +118,7 @@ export async function GET(
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
+      "Cache-Control": "private, no-store",
       "Content-Disposition": `inline; filename="loan-statement-${(req.id as string).slice(0, 8)}.pdf"`,
     },
   });

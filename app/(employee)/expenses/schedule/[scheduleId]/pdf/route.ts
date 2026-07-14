@@ -174,6 +174,7 @@ export async function GET(
   return new NextResponse(Buffer.from(outBytes), {
     headers: {
       "Content-Type": "application/pdf",
+      "Cache-Control": "private, no-store",
       "Content-Disposition": `inline; filename="travel-expenses-${fileDate}-${(header.employeeCode ?? "emp").toLowerCase()}.pdf"`,
     },
   });

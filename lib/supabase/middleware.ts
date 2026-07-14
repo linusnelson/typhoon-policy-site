@@ -29,10 +29,15 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // IMPORTANT: do not run code between createServerClient and getUser().
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // IMPORTANT: do not run code between createServerClient and getClaims().
+  // getClaims() verifies the JWT locally against the project's JWKS when
+  // asymmetric signing keys are enabled (no Auth-server round-trip) and still
+  // refreshes the session cookie when the access token is near expiry. With
+  // the legacy symmetric secret it falls back to a server-side check, so
+  // behavior is identical until the key switch. Middleware is only a redirect
+  // gate — RLS and per-page getCurrentEmployee() remain the security boundary.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims ?? null;
 
   const path = request.nextUrl.pathname;
   const isPublic =

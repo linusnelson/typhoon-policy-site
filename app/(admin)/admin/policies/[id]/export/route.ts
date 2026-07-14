@@ -54,6 +54,7 @@ export async function GET(
   return new NextResponse(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
+      "Cache-Control": "private, no-store",
       "Content-Disposition": `attachment; filename="${slug}-signatures.csv"`,
     },
   });

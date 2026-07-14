@@ -74,6 +74,7 @@ export async function GET(req: NextRequest) {
   return new NextResponse("\uFEFF" + lines.join("\n"), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
+      "Cache-Control": "private, no-store",
       "Content-Disposition": `attachment; filename="payslip_import_${monthKey.slice(0, 7)}.csv"`,
     },
   });

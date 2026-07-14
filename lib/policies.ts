@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import type {
   DocumentWithStatus,
@@ -9,21 +10,26 @@ import type {
 
 // Loads the signed-in employee row (matched by auth email via RLS).
 // Returns null when there is no matching active employee.
-export async function getCurrentEmployee(): Promise<Employee | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user?.email) return null;
+// cache(): layout and page of the same request both call this — dedupe so the
+// auth check + employees lookup run once per request, not once per caller.
+// getClaims() verifies the ES256 JWT locally (no Auth-server round-trip);
+// the employees query still runs under RLS with the same token.
+export const getCurrentEmployee = cache(
+  async (): Promise<Employee | null> => {
+    const supabase = await createClient();
+    const { data: claimsData } = await supabase.auth.getClaims();
+    const email = claimsData?.claims.email;
+    if (!email) return null;
 
-  const { data } = await supabase
-    .from("employees")
-    .select("id, org_id, name, email, role, status, is_expense_approver")
-    .eq("email", user.email)
-    .maybeSingle();
+    const { data } = await supabase
+      .from("employees")
+      .select("id, org_id, name, email, role, status, is_expense_approver")
+      .eq("email", email)
+      .maybeSingle();
 
-  return (data as Employee | null) ?? null;
-}
+    return (data as Employee | null) ?? null;
+  }
+);
 
 // All documents in the org, each joined with its current published version and
 // the viewer's signature on that version (null if not yet signed).

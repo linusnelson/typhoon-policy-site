@@ -62,6 +62,7 @@ export async function GET(req: NextRequest) {
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
+      "Cache-Control": "private, no-store",
       "Content-Disposition": `inline; filename="muster-${year}-${String(month).padStart(2, "0")}.pdf"`,
     },
   });

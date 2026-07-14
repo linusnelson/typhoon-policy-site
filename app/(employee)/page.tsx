@@ -40,7 +40,7 @@ export default async function DashboardPage() {
       getMyLeaveBalances(employee.id),
       getMyEvents(employee.id),
       getMyVisits(employee.id),
-      listHolidays(),
+      listHolidays(employee.org_id),
       getOrgModules(employee.org_id),
     ]);
 

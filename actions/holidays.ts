@@ -1,8 +1,9 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { requireAdmin, AuthzError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { HOLIDAYS_TAG } from "@/lib/data/holidays";
 import { type ActionState, str } from "@/lib/action-utils";
 
 // Create or update a holiday (optionally location-specific), org-scoped.
@@ -44,6 +45,7 @@ export async function saveHoliday(
     if (error) return { ok: false, error: error.message };
   }
 
+  revalidateTag(HOLIDAYS_TAG);
   revalidatePath("/admin/holidays");
   return { ok: true, message: id ? "Holiday updated." : "Holiday added." };
 }
@@ -61,5 +63,6 @@ export async function deleteHoliday(formData: FormData): Promise<void> {
     .eq("org_id", admin.org_id);
   if (error) throw new Error(error.message);
 
+  revalidateTag(HOLIDAYS_TAG);
   revalidatePath("/admin/holidays");
 }

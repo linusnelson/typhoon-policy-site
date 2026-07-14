@@ -3,8 +3,15 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { publishVersion } from "@/actions/publishVersion";
-import { PolicyMarkdown } from "@/components/PolicyMarkdown";
+import dynamic from "next/dynamic";
 import { Button, Card, Input, Textarea } from "@/components/ui";
+
+// Preview is only mounted when the admin toggles it on; lazy-load the markdown
+// renderer (react-markdown + unified) so it stays out of the route's initial JS.
+const PolicyMarkdown = dynamic(
+  () => import("@/components/PolicyMarkdown").then((m) => m.PolicyMarkdown),
+  { ssr: false }
+);
 
 export function NewVersionForm({
   documentId,

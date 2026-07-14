@@ -35,6 +35,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse("﻿" + csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
+        "Cache-Control": "private, no-store",
         "Content-Disposition": `attachment; filename="expenses-${month}.csv"`,
       },
     });
@@ -91,6 +92,7 @@ export async function GET(req: NextRequest) {
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
+      "Cache-Control": "private, no-store",
       "Content-Disposition": `inline; filename="expenses-${month}.pdf"`,
     },
   });

@@ -3,11 +3,18 @@
 import { useState } from "react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
+import dynamic from "next/dynamic";
 import { Banner, Button, Card, Input, Textarea } from "@/components/ui";
-import { PolicyMarkdown } from "@/components/PolicyMarkdown";
 import { idleState } from "@/lib/action-utils";
 import { createAnnouncement, updateAnnouncement } from "@/actions/announcements";
 import type { Announcement } from "@/lib/types";
+
+// Preview is only mounted when the admin toggles it on; lazy-load the markdown
+// renderer (react-markdown + unified) so it stays out of the route's initial JS.
+const PolicyMarkdown = dynamic(
+  () => import("@/components/PolicyMarkdown").then((m) => m.PolicyMarkdown),
+  { ssr: false }
+);
 
 const labelCls =
   "mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-400";

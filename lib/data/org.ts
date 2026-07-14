@@ -1,11 +1,19 @@
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   DEFAULT_MODULES,
   DEFAULT_REMINDERS,
   type OrgModules,
   type RemindersConfig,
 } from "@/lib/types";
+
+// Cross-request cache tag for org settings. The only writers of the fields
+// getOrg reads (name, go_live_date, settings.modules/company_address/reminders)
+// are the web actions settings.ts + reminders.ts — both call
+// revalidateTag(ORG_SETTINGS_TAG) after a merge-write, so cached entries are
+// invalidated immediately. The revalidate TTL below is only a safety net.
+export const ORG_SETTINGS_TAG = "org-settings";
 
 export interface OrgSettings {
   id: string;
@@ -91,29 +99,40 @@ export function remindersFromSettings(settings: unknown): RemindersConfig {
   };
 }
 
-// cache(): the layout and page of the same request both call this — dedupe.
-export const getOrg = cache(async (orgId: string): Promise<OrgSettings | null> => {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("organizations")
-    .select("id, name, go_live_date, settings")
-    .eq("id", orgId)
-    .maybeSingle();
-  if (!data) return null;
-  const settings =
-    data.settings && typeof data.settings === "object"
-      ? (data.settings as Record<string, unknown>)
-      : {};
-  return {
-    id: data.id as string,
-    name: (data.name as string) ?? "",
-    goLiveDate: (data.go_live_date as string | null) ?? null,
-    modules: modulesFromSettings(data.settings),
-    companyAddress:
-      typeof settings.company_address === "string" ? settings.company_address : "",
-    reminders: remindersFromSettings(data.settings),
-  };
-});
+// Cross-request cached fetch. Runs with the service-role client because
+// unstable_cache callbacks cannot read cookies() — the row is org-public
+// (name + feature flags + payslip address + reminder config, no per-user data)
+// and is fetched by explicit id, so bypassing RLS here leaks nothing.
+const fetchOrg = unstable_cache(
+  async (orgId: string): Promise<OrgSettings | null> => {
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from("organizations")
+      .select("id, name, go_live_date, settings")
+      .eq("id", orgId)
+      .maybeSingle();
+    if (!data) return null;
+    const settings =
+      data.settings && typeof data.settings === "object"
+        ? (data.settings as Record<string, unknown>)
+        : {};
+    return {
+      id: data.id as string,
+      name: (data.name as string) ?? "",
+      goLiveDate: (data.go_live_date as string | null) ?? null,
+      modules: modulesFromSettings(data.settings),
+      companyAddress:
+        typeof settings.company_address === "string" ? settings.company_address : "",
+      reminders: remindersFromSettings(data.settings),
+    };
+  },
+  ["org-settings"],
+  { tags: [ORG_SETTINGS_TAG], revalidate: 300 }
+);
+
+// cache(): the layout and page of the same request both call this — dedupe the
+// (now cached) fetch to a single lookup per request.
+export const getOrg = cache((orgId: string) => fetchOrg(orgId));
 
 // Convenience for layouts/pages that only gate on module flags.
 export async function getOrgModules(orgId: string): Promise<OrgModules> {

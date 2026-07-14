@@ -1,9 +1,14 @@
+import { getCurrentEmployee } from "@/lib/policies";
 import { listHolidays } from "@/lib/data/holidays";
 import { listLocations } from "@/lib/data/refs";
 import { HolidayManager } from "@/components/admin/HolidayManager";
 
 export default async function HolidaysPage() {
-  const [rows, locations] = await Promise.all([listHolidays(), listLocations()]);
+  const employee = (await getCurrentEmployee())!; // admin layout guarantees presence
+  const [rows, locations] = await Promise.all([
+    listHolidays(employee.org_id),
+    listLocations(),
+  ]);
 
   return (
     <div className="space-y-6">

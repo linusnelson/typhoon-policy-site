@@ -70,6 +70,7 @@ export async function GET(
   return new NextResponse(buffer as unknown as BodyInit, {
     headers: {
       "Content-Type": "application/pdf",
+      "Cache-Control": "private, no-store",
       "Content-Disposition": `attachment; filename="${filename}"`,
     },
   });
