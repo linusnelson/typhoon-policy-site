@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
+  Camera,
   ExternalLink,
   Flag,
   Hourglass,
@@ -38,8 +39,9 @@ interface Selected {
   date: string;
   label: string;
   time: string;
-  lat: number;
-  lng: number;
+  lat: number | null;
+  lng: number | null;
+  selfie?: string | null;
 }
 
 // OpenStreetMap embed centered on the point with a marker (no map library —
@@ -57,7 +59,14 @@ export function TimelineExplorer({ days }: { days: TimelineDay[] }) {
     for (const d of days) {
       for (const e of d.events) {
         if (e.lat != null && e.lng != null) {
-          return { date: d.date, label: e.label, time: e.time, lat: e.lat, lng: e.lng };
+          return {
+            date: d.date,
+            label: e.label,
+            time: e.time,
+            lat: e.lat,
+            lng: e.lng,
+            selfie: e.selfieUrl ?? null,
+          };
         }
       }
     }
@@ -112,7 +121,9 @@ export function TimelineExplorer({ days }: { days: TimelineDay[] }) {
               {d.events.map((e, i) => {
                 const Icon = KIND_ICON[e.kind];
                 const hasGps = e.lat != null && e.lng != null;
-                const active = hasGps && isSelected(d.date, e);
+                const hasSelfie = !!e.selfieUrl;
+                const selectable = hasGps || hasSelfie;
+                const active = selectable && isSelected(d.date, e);
                 const row = (
                   <>
                     <span className="absolute -left-[1.42rem] flex h-5 w-5 items-center justify-center rounded-full border border-gray-200 bg-white">
@@ -124,6 +135,13 @@ export function TimelineExplorer({ days }: { days: TimelineDay[] }) {
                     <span className="flex-1 truncate text-left text-sm capitalize text-gray-700">
                       {e.label}
                     </span>
+                    {hasSelfie && (
+                      <Camera
+                        className={`h-3.5 w-3.5 shrink-0 ${
+                          active ? "text-brand" : "text-gray-300"
+                        }`}
+                      />
+                    )}
                     {hasGps && (
                       <MapPin
                         className={`h-3.5 w-3.5 shrink-0 ${
@@ -135,7 +153,7 @@ export function TimelineExplorer({ days }: { days: TimelineDay[] }) {
                 );
                 return (
                   <li key={i} className="relative">
-                    {hasGps ? (
+                    {selectable ? (
                       <button
                         type="button"
                         onClick={() =>
@@ -143,8 +161,9 @@ export function TimelineExplorer({ days }: { days: TimelineDay[] }) {
                             date: d.date,
                             label: e.label,
                             time: e.time,
-                            lat: e.lat!,
-                            lng: e.lng!,
+                            lat: e.lat,
+                            lng: e.lng,
+                            selfie: e.selfieUrl ?? null,
                           })
                         }
                         className={`relative flex w-full items-center gap-3 rounded-lg px-2 py-1.5 transition-colors ${
@@ -171,13 +190,32 @@ export function TimelineExplorer({ days }: { days: TimelineDay[] }) {
         <div className="overflow-hidden rounded-card border border-gray-200 bg-white shadow-sm">
           {selected ? (
             <>
-              <iframe
-                key={`${selected.lat},${selected.lng}`}
-                title="Location map"
-                src={osmEmbedUrl(selected.lat, selected.lng)}
-                className="h-72 w-full border-0"
-                loading="lazy"
-              />
+              {selected.selfie && (
+                // Check-in selfie (private `selfies` bucket, pre-signed URL).
+                // Opens full-size in a new tab, mirroring ClockBays' tap-to-zoom.
+                <a href={selected.selfie} target="_blank" rel="noopener noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    key={selected.selfie}
+                    src={selected.selfie}
+                    alt="Visit check-in selfie"
+                    className="h-56 w-full border-b border-gray-200 object-cover"
+                  />
+                </a>
+              )}
+              {selected.lat != null && selected.lng != null ? (
+                <iframe
+                  key={`${selected.lat},${selected.lng}`}
+                  title="Location map"
+                  src={osmEmbedUrl(selected.lat, selected.lng)}
+                  className="h-72 w-full border-0"
+                  loading="lazy"
+                />
+              ) : !selected.selfie ? (
+                <div className="flex h-72 items-center justify-center p-6 text-center text-sm text-gray-400">
+                  No GPS coordinates recorded for this entry.
+                </div>
+              ) : null}
               <div className="space-y-1 p-3">
                 <div className="text-sm font-semibold capitalize text-ink">
                   {selected.label}
@@ -185,24 +223,26 @@ export function TimelineExplorer({ days }: { days: TimelineDay[] }) {
                 <div className="text-xs text-gray-500">
                   {formatIstDate(selected.date)} · {selected.time}
                 </div>
-                <div className="flex items-center gap-3 pt-1">
-                  <a
-                    href={`https://www.openstreetmap.org/?mlat=${selected.lat}&mlon=${selected.lng}#map=17/${selected.lat}/${selected.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-info-deep hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3" /> OpenStreetMap
-                  </a>
-                  <a
-                    href={`https://www.google.com/maps?q=${selected.lat},${selected.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-info-deep hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3" /> Google Maps
-                  </a>
-                </div>
+                {selected.lat != null && selected.lng != null && (
+                  <div className="flex items-center gap-3 pt-1">
+                    <a
+                      href={`https://www.openstreetmap.org/?mlat=${selected.lat}&mlon=${selected.lng}#map=17/${selected.lat}/${selected.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-info-deep hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" /> OpenStreetMap
+                    </a>
+                    <a
+                      href={`https://www.google.com/maps?q=${selected.lat},${selected.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-info-deep hover:underline"
+                    >
+                      <ExternalLink className="h-3 w-3" /> Google Maps
+                    </a>
+                  </div>
+                )}
               </div>
             </>
           ) : (

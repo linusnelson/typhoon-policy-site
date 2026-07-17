@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatIstTime, istDateKey, istDayBoundsUtc } from "@/lib/ist";
+import { signSelfieUrls } from "@/lib/supabase/storage";
 
 // Admin-only data for the employee detail page (Security + Timeline tabs).
 // RLS grants admins org-wide reads, so the user-session client is enough.
@@ -155,6 +156,10 @@ export interface TimelineEvent {
   label: string;
   lat: number | null;
   lng: number | null;
+  // Signed URL of the visit check-in selfie, when one was captured. Only
+  // visit_in events carry it (matches ClockBays: one selfie per client_visit,
+  // taken at check-in). Null/absent for everything else.
+  selfieUrl?: string | null;
 }
 
 export interface TimelineDay {
@@ -183,7 +188,7 @@ export async function getLocationTimeline(
       .lt("punched_at", endUtc),
     supabase
       .from("client_visits")
-      .select("client_name, visit_date, check_in_at, check_out_at, check_in_lat, check_in_lng, check_out_lat, check_out_lng")
+      .select("client_name, visit_date, check_in_at, check_out_at, check_in_lat, check_in_lng, check_out_lat, check_out_lng, selfie_url")
       .eq("employee_id", employeeId)
       .gte("visit_date", fromKey)
       .lte("visit_date", toKey),
@@ -218,6 +223,10 @@ export async function getLocationTimeline(
     });
   }
 
+  // Raw selfie paths carried on visit_in events; batch-signed after the loop so
+  // every event's selfieUrl becomes a short-lived signed URL in one request.
+  const visitSelfieEvents: { event: TimelineEvent; path: string }[] = [];
+
   for (const v of (visits as
     | {
         client_name: string;
@@ -228,16 +237,19 @@ export async function getLocationTimeline(
         check_in_lng: number | null;
         check_out_lat: number | null;
         check_out_lng: number | null;
+        selfie_url: string | null;
       }[]
     | null) ?? []) {
     if (v.check_in_at) {
-      add(istDateKey(v.check_in_at), {
+      const inEvent: TimelineEvent = {
         time: formatIstTime(v.check_in_at),
         kind: "visit_in",
         label: `Check-in · ${v.client_name}`,
         lat: v.check_in_lat,
         lng: v.check_in_lng,
-      });
+      };
+      if (v.selfie_url) visitSelfieEvents.push({ event: inEvent, path: v.selfie_url });
+      add(istDateKey(v.check_in_at), inEvent);
     }
     if (v.check_out_at) {
       add(istDateKey(v.check_out_at), {
@@ -278,6 +290,13 @@ export async function getLocationTimeline(
       lat: c.lat,
       lng: c.lng,
     });
+  }
+
+  if (visitSelfieEvents.length > 0) {
+    const signed = await signSelfieUrls(visitSelfieEvents.map((v) => v.path));
+    for (const { event, path } of visitSelfieEvents) {
+      event.selfieUrl = signed.get(path) ?? null;
+    }
   }
 
   return [...byDay.entries()]
