@@ -19,7 +19,7 @@ import {
 } from "@/lib/engine/payslip-import";
 import { listBankDetailsMap, type EmployeeBankDetails } from "@/lib/data/bank-details";
 import { PayslipPdf, type PayslipPdfData } from "@/lib/pdf/payslip-pdf";
-import { EMBLEM_DATA_URL } from "@/lib/pdf/emblem";
+import { pdfCompanyName } from "@/lib/pdf/header";
 import { amountInWordsINR } from "@/lib/inr-words";
 import { formatMonth } from "@/lib/format";
 import { formatIstDate } from "@/lib/ist";
@@ -171,7 +171,6 @@ function pdfDataForRow(
     companyName,
     companyAddress,
     monthLabel: monthLabel(monthKey),
-    emblemDataUrl: EMBLEM_DATA_URL,
     employeeName: employee.name,
     employeeCode: employee.employee_code,
     joiningDate: employee.date_of_joining
@@ -266,7 +265,7 @@ export async function importPayslips(
     return { ok: false, error: "The file has no data rows." };
   }
 
-  const companyName = org?.name ?? "Typhoon Electronic Solutions";
+  const companyName = pdfCompanyName(org);
   const companyAddress = org?.companyAddress ?? "";
   const employeeById = new Map(employees.map((e) => [e.id, e]));
   const supabase = await createClient();

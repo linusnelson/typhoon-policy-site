@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { str, type ActionState } from "@/lib/action-utils";
 import { computeLeaveDays, type LeaveDuration } from "@/lib/engine/leave-days";
 import { istToday } from "@/lib/ist";
+import { fyStartYearFromKey } from "@/lib/leave-year";
 
 function dayDiffInclusive(start: string, end: string): number {
   const ms = new Date(end).getTime() - new Date(start).getTime();
@@ -53,7 +54,7 @@ export async function approveLeave(formData: FormData): Promise<void> {
   // Deduct whole days (ceil) from the employee's balance for the start year.
   const days = req.days_count > 0 ? req.days_count : dayDiffInclusive(req.start_date, req.end_date);
   if (req.leave_type_id) {
-    const year = new Date(req.start_date).getUTCFullYear();
+    const year = fyStartYearFromKey(req.start_date as string);
     const { data: bal } = await supabase
       .from("leave_balances")
       .select("id, used")
@@ -160,7 +161,7 @@ export async function adminCancelLeave(formData: FormData): Promise<void> {
       req.days_count > 0
         ? req.days_count
         : dayDiffInclusive(req.start_date, req.end_date);
-    const year = new Date(req.start_date).getUTCFullYear();
+    const year = fyStartYearFromKey(req.start_date as string);
     const { data: bal } = await supabase
       .from("leave_balances")
       .select("id, used")
@@ -305,7 +306,7 @@ export async function adminApplyLeave(
   }
 
   const isUnlimited = (policy?.is_unlimited as boolean) ?? false;
-  const year = Number(startDate.slice(0, 4));
+  const year = fyStartYearFromKey(startDate);
 
   if (!isUnlimited) {
     const { data: bal } = await supabase
@@ -498,7 +499,7 @@ export async function adminEditPendingLeave(
 
   const isUnlimited = (policy?.is_unlimited as boolean) ?? false;
   if (!isUnlimited) {
-    const year = Number(startDate.slice(0, 4));
+    const year = fyStartYearFromKey(startDate);
     const { data: bal } = await supabase
       .from("leave_balances")
       .select("earned, used, carried_forward")
@@ -604,7 +605,7 @@ export async function adminAdjustLeaveBalance(
     .maybeSingle();
   if (!type) return { ok: false, error: "Leave type not found." };
 
-  const year = Number(istToday().slice(0, 4));
+  const year = fyStartYearFromKey(istToday());
   const { data: bal } = await supabase
     .from("leave_balances")
     .select("id, earned, used, carried_forward")

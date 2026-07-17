@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
+import { PdfHeader } from "./header";
 import { PDF } from "./theme";
 
 // Loan / Advance statement with the amortization schedule. Generated on
@@ -8,15 +9,6 @@ import { PDF } from "./theme";
 
 const s = StyleSheet.create({
   page: { paddingTop: 48, paddingBottom: 56, paddingHorizontal: 48 },
-  band: {
-    borderBottomWidth: 2,
-    borderBottomColor: PDF.brand,
-    paddingBottom: 10,
-    marginBottom: 16,
-  },
-  company: { fontSize: 9, fontFamily: "Helvetica-Bold", color: PDF.brand, letterSpacing: 1 },
-  docTitle: { fontSize: 18, fontFamily: "Helvetica-Bold", color: PDF.ink, marginTop: 4 },
-  meta: { fontSize: 9, color: PDF.gray500, marginTop: 4 },
   section: { fontSize: 11, fontFamily: "Helvetica-Bold", color: PDF.ink, marginTop: 16, marginBottom: 8 },
   box: { borderWidth: 1, borderColor: PDF.gray200, borderRadius: 6, padding: 12 },
   row: { flexDirection: "row", marginBottom: 6 },
@@ -101,14 +93,15 @@ export function LoanPdf(d: LoanPdfData) {
       author={d.companyName}
     >
       <Page size="A4" style={s.page}>
-        <View style={s.band}>
-          <Text style={s.company}>{d.companyName.toUpperCase()}</Text>
-          <Text style={s.docTitle}>Loan / Advance Statement</Text>
-          <Text style={s.meta}>
-            Reference {d.requestId.slice(0, 8).toUpperCase()} · Status:{" "}
-            {d.status.toUpperCase()} · Generated {d.generatedAt}
-          </Text>
-        </View>
+        <PdfHeader
+          companyName={d.companyName}
+          documentTitle="Loan / Advance Statement"
+          meta={`Reference ${d.requestId
+            .slice(0, 8)
+            .toUpperCase()} · Status: ${d.status.toUpperCase()} · Generated ${
+            d.generatedAt
+          }`}
+        />
 
         <Text style={s.section}>Borrower</Text>
         <View style={s.box}>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Check, FileText, X } from "lucide-react";
 import { Badge, Banner, Button, Card, Input } from "@/components/ui";
 import { BillImageZoom } from "@/components/expenses/BillImageZoom";
@@ -39,17 +38,22 @@ export function GroupReviewWizard({
   claims: WizardClaim[];
   canActOnOwn: boolean;
 }) {
-  const router = useRouter();
+  // The review action revalidates this route, so the `claims` prop reloads —
+  // and shrinks — after every decision. Freeze the queue on mount: the wizard
+  // walks the list it started with, not whatever is still pending server-side.
+  // Also keeps the signed bill URLs stable for the whole session.
+  const [queue] = useState(claims);
   const [idx, setIdx] = useState(0);
   const [outcomes, setOutcomes] = useState<Outcome[]>([]);
   const [amount, setAmount] = useState(() =>
-    claims.length ? String(claims[0].suggestedAmount) : ""
+    queue.length ? String(queue[0].suggestedAmount) : ""
   );
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const current = idx < claims.length ? claims[idx] : null;
+  const started = queue.length > 0;
+  const current = idx < queue.length ? queue[idx] : null;
 
   const advance = (outcome: Outcome) => {
     const next = idx + 1;
@@ -57,12 +61,7 @@ export function GroupReviewWizard({
     setIdx(next);
     setNote("");
     setError(null);
-    if (next < claims.length) {
-      setAmount(String(claims[next].suggestedAmount));
-    } else {
-      // Group finished — refresh the server data behind this page.
-      router.refresh();
-    }
+    if (next < queue.length) setAmount(String(queue[next].suggestedAmount));
   };
 
   const act = (mode: "approve" | "reject") => {
@@ -85,6 +84,15 @@ export function GroupReviewWizard({
       }
     });
   };
+
+  // ── Empty state ─────────────────────────────────────────────────────────────
+  if (!started) {
+    return (
+      <Card className="p-10 text-center text-sm text-gray-400">
+        Nothing pending in this group — all reviewed.
+      </Card>
+    );
+  }
 
   // ── Done screen ─────────────────────────────────────────────────────────────
   if (!current) {
@@ -131,10 +139,10 @@ export function GroupReviewWizard({
       {/* Progress */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-gray-500">
-          Bill {idx + 1} of {claims.length}
+          Bill {idx + 1} of {queue.length}
         </span>
         <div className="flex gap-1">
-          {claims.map((c, i) => (
+          {queue.map((c, i) => (
             <span
               key={c.id}
               className={[
@@ -205,7 +213,22 @@ export function GroupReviewWizard({
 
       {/* Decision */}
       <Card className="space-y-3 p-5">
-        {error && <Banner tone="danger">{error}</Banner>}
+        {error && (
+          <div className="space-y-2">
+            <Banner tone="danger">{error}</Banner>
+            {/* Escape hatch: if this claim can't be acted on (e.g. another
+                approver got to it first) the group must stay walkable. */}
+            <Button
+              variant="secondary"
+              disabled={pending}
+              onClick={() =>
+                advance({ claim: current, mode: "skip", amount: null })
+              }
+            >
+              Skip this claim
+            </Button>
+          </div>
+        )}
         {blockedOwn ? (
           <Banner tone="info">
             This is your own claim — another approver or an admin must review

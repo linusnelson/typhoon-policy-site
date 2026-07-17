@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
+import { PdfHeader } from "./header";
 import { PDF } from "./theme";
 import {
   collapseQuarters,
@@ -24,18 +25,7 @@ const SUM_W = 22; // each of P / L / A
 
 const s = StyleSheet.create({
   page: { paddingTop: 26, paddingBottom: 30, paddingHorizontal: 24 },
-  band: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    borderBottomWidth: 1.5,
-    borderBottomColor: PDF.brand,
-    paddingBottom: 6,
-    marginBottom: 8,
-  },
-  company: { fontSize: 8, fontFamily: "Helvetica-Bold", color: PDF.brand, letterSpacing: 1 },
-  title: { fontSize: 14, fontFamily: "Helvetica-Bold", color: PDF.ink, marginTop: 2 },
-  meta: { fontSize: 7.5, color: PDF.gray500 },
+  meta: { fontSize: 7.5, color: PDF.gray500, textAlign: "right" },
   legend: { flexDirection: "row", flexWrap: "wrap", marginBottom: 8, gap: 8 },
   legendItem: { flexDirection: "row", alignItems: "center", marginRight: 8 },
   swatch: {
@@ -174,18 +164,19 @@ export function MusterPdf(d: MusterPdfData) {
     <Document title={`Attendance Muster — ${d.monthLabel}`} author={d.companyName}>
       {pages.map((pageRows, pi) => (
         <Page key={pi} size="A4" orientation="landscape" style={s.page}>
-          <View style={s.band}>
-            <View>
-              <Text style={s.company}>{d.companyName.toUpperCase()}</Text>
-              <Text style={s.title}>Attendance Muster — {d.monthLabel}</Text>
-            </View>
-            <View>
-              <Text style={s.meta}>{d.scopeLabel}</Text>
-              <Text style={s.meta}>
-                Page {pi + 1} of {pages.length} · Generated {d.generatedAt}
-              </Text>
-            </View>
-          </View>
+          {/* Emblem alone — the company name is already in the fixed footer. */}
+          <PdfHeader
+            compact
+            documentTitle={`Attendance Muster — ${d.monthLabel}`}
+            right={
+              <>
+                <Text style={s.meta}>{d.scopeLabel}</Text>
+                <Text style={s.meta}>
+                  Page {pi + 1} of {pages.length} · Generated {d.generatedAt}
+                </Text>
+              </>
+            }
+          />
 
           {pi === 0 && (
             <View style={s.legend}>

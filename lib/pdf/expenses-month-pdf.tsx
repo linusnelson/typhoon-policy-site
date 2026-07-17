@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
+import { PdfHeader } from "./header";
 import { PDF } from "./theme";
 
 // Monthly consolidated expense report (tables only) for admin + accounts:
@@ -8,14 +9,6 @@ import { PDF } from "./theme";
 
 const s = StyleSheet.create({
   page: { paddingTop: 48, paddingBottom: 56, paddingHorizontal: 48 },
-  band: {
-    borderBottomWidth: 2,
-    borderBottomColor: PDF.brand,
-    paddingBottom: 10,
-    marginBottom: 16,
-  },
-  company: { fontSize: 9, fontFamily: "Helvetica-Bold", color: PDF.brand, letterSpacing: 1 },
-  docTitle: { fontSize: 16, fontFamily: "Helvetica-Bold", color: PDF.ink, marginTop: 4 },
   meta: { fontSize: 9, color: PDF.gray500, marginTop: 4 },
   employee: {
     fontSize: 11,
@@ -107,16 +100,11 @@ export function ExpensesMonthPdf(d: ExpensesMonthPdfData) {
   return (
     <Document title={`Expense Report — ${d.monthLabel}`} author={d.companyName}>
       <Page size="A4" style={s.page}>
-        <View style={s.band}>
-          <Text style={s.company}>{d.companyName.toUpperCase()}</Text>
-          <Text style={s.docTitle}>
-            Consolidated Expense Report — {d.monthLabel}
-          </Text>
-          <Text style={s.meta}>
-            All submitted visit expenses (pending, approved, rejected,
-            reimbursed) · Generated {d.generatedAt}
-          </Text>
-        </View>
+        <PdfHeader
+          companyName={d.companyName}
+          documentTitle={`Consolidated Expense Report — ${d.monthLabel}`}
+          meta={`All submitted visit expenses (pending, approved, rejected, reimbursed) · Generated ${d.generatedAt}`}
+        />
 
         {d.employees.length === 0 && (
           <Text style={s.meta}>No expenses were submitted this month.</Text>

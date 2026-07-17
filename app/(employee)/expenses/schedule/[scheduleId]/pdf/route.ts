@@ -15,6 +15,7 @@ import {
 } from "@/lib/pdf/expense-group-pdf";
 import { formatIstDate, formatIstDateTime } from "@/lib/ist";
 import { EXPENSE_CATEGORY_LABELS } from "@/lib/types";
+import { pdfCompanyName } from "@/lib/pdf/header";
 
 export const runtime = "nodejs";
 
@@ -136,7 +137,7 @@ export async function GET(
 
   const base = await renderToBuffer(
     ExpenseGroupPdf({
-      companyName: (org?.name as string) ?? "Typhoon Electronic Solutions",
+      companyName: pdfCompanyName(org),
       title: `Travel Expenses — ${header.label} — ${monthLabel}`,
       employeeName: header.employeeName ?? "Unknown",
       employeeCode: header.employeeCode,

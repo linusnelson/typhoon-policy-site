@@ -5,6 +5,7 @@ import { requireAdmin, AuthzError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { type ActionState, str, num, bool } from "@/lib/action-utils";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fyStartYearFromDate } from "@/lib/leave-year";
 
 const ACCRUAL_TYPES = ["monthly", "yearly", "unlimited", "manual"];
 
@@ -164,7 +165,7 @@ async function ensureBalancesExist(
     accrualPerMonth: number;
   }
 ): Promise<void> {
-  const year = new Date().getFullYear();
+  const year = fyStartYearFromDate(new Date());
 
   const { data: empRows } = await supabase
     .from("employees")
@@ -220,7 +221,7 @@ async function recalculateBalancesFromDate(
   }
 ): Promise<void> {
   const now = new Date();
-  const year = now.getFullYear();
+  const year = fyStartYearFromDate(now);
   const eff = new Date(opts.effectiveDate + "T00:00:00");
   if (now < eff) return;
 

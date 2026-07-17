@@ -10,7 +10,7 @@
 | Brand Name | Typhoon Electronics |
 | Registered Office | Maraimalai Nagar, Tamil Nadu, India |
 | Document Type | Employee Loans and Advances Policy |
-| Effective Date | 01 July 2026 |
+| Effective Date | 01 April 2026 |
 | Version | 1.0 |
 | Approved By | Mr. Michael Raj A, Chief Executive Officer |
 | Governing Law | Tamil Nadu Shops & Establishments Act, 1947; Payment of Wages Act, 1936; applicable Central labour and tax legislation |
@@ -42,7 +42,7 @@ For the purposes of this Policy, the following terms shall bear the meanings asc
 - **"Code of Conduct"** means the Typhoon Electronics Code of Conduct, issued separately as part of the HR Policy Manual.
 - **"Declared EMIs"** means the monthly repayment obligations on the Employee's existing external borrowings (home, vehicle, personal, or other loans) as declared by the Employee in the Employee Portal.
 - **"Declared Salary"** means the gross monthly salary declared by the Employee at the time of application, subject to verification by Management against Company records.
-- **"Effective Date"** means 1 July 2026.
+- **"Effective Date"** means 1 April 2026.
 - **"EMI"** means one equated monthly instalment of a Loan/Advance, recovered by deduction from salary.
 - **"Employee"** has the meaning given in the *Scope and Applicability* section above.
 - **"Employee Portal"** means the Company's internal web and mobile platform through which Loan/Advance requests are submitted, checked for eligibility, approved, and tracked, and which constitutes the Company's system of record.
@@ -178,7 +178,7 @@ This Policy applies to all Loans/Advances requested on or after the Effective Da
 |---|---|
 | Document Title | Typhoon Electronics — Employee Loans and Advances Policy |
 | Version | 1.0 |
-| Effective Date | 01 July 2026 |
+| Effective Date | 01 April 2026 |
 | Approved By | Mr. Michael Raj A, Chief Executive Officer |
 | Owner | Human Resources Function |
 | Review Cycle | Annual, or earlier upon legislative or organisational change |

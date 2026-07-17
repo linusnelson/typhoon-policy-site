@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { istDateKey, istMinutesOfDay, istDayBoundsUtc } from "@/lib/ist";
+import { fyStartYearFromKey } from "@/lib/leave-year";
 import type {
   DailyAttendanceRow,
   MonthlySummaryRow,
@@ -204,7 +205,7 @@ export async function dailyAttendance(
 ): Promise<DailyAttendanceRow[]> {
   const supabase = await createClient();
   const { startUtc, endUtc } = istDayBoundsUtc(dateKey);
-  const year = Number(dateKey.slice(0, 4));
+  const year = fyStartYearFromKey(dateKey);
 
   const [
     { data: emps },
@@ -340,7 +341,7 @@ async function periodSummary(
   const supabase = await createClient();
   const startUtc = istDayBoundsUtc(fromKey).startUtc;
   const endUtc = istDayBoundsUtc(toKey).endUtc;
-  const year = Number(fromKey.slice(0, 4));
+  const year = fyStartYearFromKey(fromKey);
   const today = todayKey();
   const workingDaysEnd = toKey > today ? today : toKey;
 
@@ -719,7 +720,7 @@ export async function dailyRange(
   const supabase = await createClient();
   const startUtc = istDayBoundsUtc(fromKey).startUtc;
   const endUtc = istDayBoundsUtc(toKey).endUtc;
-  const year = Number(fromKey.slice(0, 4));
+  const year = fyStartYearFromKey(fromKey);
 
   const [
     { data: emps },

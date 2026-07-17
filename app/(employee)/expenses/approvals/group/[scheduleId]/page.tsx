@@ -9,7 +9,6 @@ import {
   listScheduleGroupClaims,
 } from "@/lib/data/expenses";
 import { signExpenseBillUrl } from "@/lib/supabase/storage";
-import { Card } from "@/components/ui";
 import {
   GroupReviewWizard,
   type WizardClaim,
@@ -109,16 +108,13 @@ export default async function GroupReviewPage({
         </p>
       </div>
 
-      {wizardClaims.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-gray-400">
-          Nothing pending in this group — all reviewed.
-        </Card>
-      ) : (
-        <GroupReviewWizard
-          claims={wizardClaims}
-          canActOnOwn={viewer.role === "admin"}
-        />
-      )}
+      {/* Always mounted: each review revalidates this route, and swapping the
+          wizard out for an empty state on the last one would kill its summary.
+          The wizard renders its own empty state when it starts with none. */}
+      <GroupReviewWizard
+        claims={wizardClaims}
+        canActOnOwn={viewer.role === "admin"}
+      />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { monthlyExpenseReport } from "@/lib/data/expenses";
 import { monthlyExpensesCsv } from "@/lib/data/report-types";
 import { ExpensesMonthPdf } from "@/lib/pdf/expenses-month-pdf";
+import { pdfCompanyName } from "@/lib/pdf/header";
 import { formatIstDate, formatIstDateTime, istToday } from "@/lib/ist";
 import { EXPENSE_CATEGORY_LABELS } from "@/lib/types";
 
@@ -55,7 +56,7 @@ export async function GET(req: NextRequest) {
 
   const buffer = await renderToBuffer(
     ExpensesMonthPdf({
-      companyName: (org?.name as string) ?? "Typhoon Electronic Solutions",
+      companyName: pdfCompanyName(org),
       monthLabel,
       employees: report.employees.map((e) => ({
         name: e.employeeName,

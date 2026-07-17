@@ -1,5 +1,6 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { PdfHeader } from "./header";
 import { PDF } from "./theme";
 
 // Travel-expense report for one visit-schedule group: a cover page (title,
@@ -13,15 +14,6 @@ import { PDF } from "./theme";
 
 const s = StyleSheet.create({
   page: { paddingTop: 48, paddingBottom: 56, paddingHorizontal: 48 },
-  band: {
-    borderBottomWidth: 2,
-    borderBottomColor: PDF.brand,
-    paddingBottom: 10,
-    marginBottom: 16,
-  },
-  company: { fontSize: 9, fontFamily: "Helvetica-Bold", color: PDF.brand, letterSpacing: 1 },
-  docTitle: { fontSize: 16, fontFamily: "Helvetica-Bold", color: PDF.ink, marginTop: 4 },
-  meta: { fontSize: 9, color: PDF.gray500, marginTop: 4 },
   section: { fontSize: 11, fontFamily: "Helvetica-Bold", color: PDF.ink, marginTop: 16, marginBottom: 8 },
   box: { borderWidth: 1, borderColor: PDF.gray200, borderRadius: 6, padding: 12 },
   row: { flexDirection: "row", marginBottom: 6 },
@@ -123,11 +115,11 @@ export function ExpenseGroupPdf(d: ExpenseGroupPdfData) {
     <Document title={d.title} author={d.companyName}>
       {/* ── Cover: header, employee, expense table ── */}
       <Page size="A4" style={s.page}>
-        <View style={s.band}>
-          <Text style={s.company}>{d.companyName.toUpperCase()}</Text>
-          <Text style={s.docTitle}>{d.title}</Text>
-          <Text style={s.meta}>Generated {d.generatedAt}</Text>
-        </View>
+        <PdfHeader
+          companyName={d.companyName}
+          documentTitle={d.title}
+          meta={`Generated ${d.generatedAt}`}
+        />
 
         <Text style={s.section}>Employee</Text>
         <View style={s.box}>

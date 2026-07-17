@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createClient } from "@/lib/supabase/server";
 import { LoanPdf, type LoanPdfRow } from "@/lib/pdf/loan-pdf";
+import { pdfCompanyName } from "@/lib/pdf/header";
 import {
   buildInstallmentSchedule,
   defaultFirstDeductionMonth,
@@ -94,7 +95,7 @@ export async function GET(
 
   const buffer = await renderToBuffer(
     LoanPdf({
-      companyName: (org?.name as string) ?? "Typhoon Electronic Solutions",
+      companyName: pdfCompanyName(org),
       employeeName: emp?.name ?? "Employee",
       employeeCode: emp?.employee_code ?? null,
       requestId: req.id as string,

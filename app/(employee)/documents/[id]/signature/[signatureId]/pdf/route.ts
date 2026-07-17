@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { createClient } from "@/lib/supabase/server";
 import { PolicyPdf } from "@/lib/pdf/policy-pdf";
+import { pdfCompanyName } from "@/lib/pdf/header";
 
 export const runtime = "nodejs";
 
@@ -49,7 +50,7 @@ export async function GET(
 
   const buffer = await renderToBuffer(
     PolicyPdf({
-      companyName: org?.name ?? "Typhoon Electronic Solutions",
+      companyName: pdfCompanyName(org),
       documentTitle: document.title,
       versionLabel: version.version_label,
       effectiveDate: version.effective_date,

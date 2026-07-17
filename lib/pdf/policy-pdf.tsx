@@ -1,19 +1,11 @@
 import React from "react";
 import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { PdfHeader } from "./header";
 import { markdownToPdf } from "./mdast-to-pdf";
 import { PDF } from "./theme";
 
 const s = StyleSheet.create({
   page: { paddingTop: 48, paddingBottom: 56, paddingHorizontal: 48 },
-  band: {
-    borderBottomWidth: 2,
-    borderBottomColor: PDF.brand,
-    paddingBottom: 10,
-    marginBottom: 16,
-  },
-  company: { fontSize: 9, fontFamily: "Helvetica-Bold", color: PDF.brand, letterSpacing: 1 },
-  docTitle: { fontSize: 20, fontFamily: "Helvetica-Bold", color: PDF.ink, marginTop: 4 },
-  meta: { fontSize: 9, color: PDF.gray500, marginTop: 4 },
   ackTitle: { fontSize: 13, fontFamily: "Helvetica-Bold", color: PDF.ink, marginBottom: 10 },
   ackIntro: { fontSize: 10, color: PDF.gray700, lineHeight: 1.5, marginBottom: 14 },
   ackBox: { borderWidth: 1, borderColor: PDF.gray200, borderRadius: 6, padding: 14 },
@@ -89,14 +81,13 @@ export function PolicyPdf(d: SignedPdfData) {
     >
       {/* Policy body */}
       <Page size="A4" style={s.page} wrap>
-        <View style={s.band}>
-          <Text style={s.company}>{d.companyName.toUpperCase()}</Text>
-          <Text style={s.docTitle}>{d.documentTitle}</Text>
-          <Text style={s.meta}>
-            Version {d.versionLabel}
-            {d.effectiveDate ? `  ·  Effective ${fmtDate(d.effectiveDate)}` : ""}
-          </Text>
-        </View>
+        <PdfHeader
+          companyName={d.companyName}
+          documentTitle={d.documentTitle}
+          meta={`Version ${d.versionLabel}${
+            d.effectiveDate ? `  ·  Effective ${fmtDate(d.effectiveDate)}` : ""
+          }`}
+        />
         {markdownToPdf(d.contentMd)}
         <Text
           style={s.footer}
@@ -109,10 +100,10 @@ export function PolicyPdf(d: SignedPdfData) {
 
       {/* Acknowledgement page */}
       <Page size="A4" style={s.page}>
-        <View style={s.band}>
-          <Text style={s.company}>{d.companyName.toUpperCase()}</Text>
-          <Text style={s.docTitle}>Acknowledgement of Receipt</Text>
-        </View>
+        <PdfHeader
+          companyName={d.companyName}
+          documentTitle="Acknowledgement of Receipt"
+        />
         <Text style={s.ackTitle}>{d.documentTitle} — Version {d.versionLabel}</Text>
         <Text style={s.ackIntro}>
           The individual identified below has electronically confirmed that they

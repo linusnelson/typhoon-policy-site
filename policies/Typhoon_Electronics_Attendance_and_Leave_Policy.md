@@ -10,7 +10,7 @@
 | Brand Name | Typhoon Electronics |
 | Registered Office | Maraimalai Nagar, Tamil Nadu, India |
 | Document Type | Attendance & Leave Policy |
-| Effective Date | 01 June 2026 |
+| Effective Date | 01 April 2026 |
 | Version | 1.0 |
 | Approved By | Mr. Michael Raj A, Chief Executive Officer |
 | Governing Law | Tamil Nadu Shops & Establishments Act, 1947; Maternity Benefit Act, 1961 (as amended); applicable Central labour legislation |
@@ -41,9 +41,10 @@ Each individual to whom this Policy applies is hereinafter referred to as an "**
 For the purposes of this Policy, the following terms shall bear the meanings ascribed to them below:
 
 - **"Company"** means Typhoon Electronics Solutions, including its successors and assigns.
-- **"Calendar Year"** means the period commencing 1 January and ending 31 December.
+- **"Calendar Year"** means the period commencing 1 January and ending 31 December. The Calendar Year is relevant solely to the declaration of public holidays under clause 1.12 and Annexure A.
+- **"Financial Year"** means the period commencing 1 April and ending 31 March. All leave entitlement, accrual, carry-forward, and lapse under this Policy shall be reckoned by reference to the Financial Year. The current Financial Year is 1 April 2026 to 31 March 2027.
 - **"Code of Conduct"** means the Typhoon Electronics Code of Conduct, issued separately as part of the HR Policy Manual.
-- **"Effective Date"** means 1 June 2026.
+- **"Effective Date"** means 1 April 2026.
 - **"Employee"** has the meaning given in the *Scope and Applicability* section above.
 - **"HR"** or **"Human Resources"** means the function or person designated by the Company to administer this Policy.
 - **"Management"** means the Chief Executive Officer and such other persons as the CEO may designate.
@@ -84,12 +85,12 @@ This Policy applies to all Employees as defined in the *Scope and Applicability*
 
 ## 1.5 Leave Categories and Annual Entitlements
 
-1.5.1 Subject to the terms of this Policy, Employees shall be entitled to the following leave in each Calendar Year:
+1.5.1 Subject to the terms of this Policy, Employees shall be entitled to the following leave in each Financial Year:
 
 | Leave Category | Annual Entitlement | Accrual |
 |---|---|---|
 | Casual Leave (CL) | 24 days | 2 days per completed calendar month |
-| Sick Leave (SL) | 10 days | Credited at the start of the Calendar Year (pro-rated for new joiners) |
+| Sick Leave (SL) | 10 days | Credited at the start of the Financial Year (pro-rated for new joiners) |
 | Maternity Leave | 26 weeks | Statutory, as per Maternity Benefit Act, 1961 (as amended) |
 | Paternity Leave | 5 days | On the occasion of the birth of an Employee's child |
 | Adoption Leave | As per Section 5(4) of the Maternity Benefit Act, 1961 | For Employees legally adopting a child below three months of age |
@@ -99,9 +100,9 @@ This Policy applies to all Employees as defined in the *Scope and Applicability*
 
 ## 1.6 Casual Leave — Carry-Forward and Lapse
 
-1.6.1 Unused Casual Leave shall be carried forward to subsequent months within the same Calendar Year.
+1.6.1 Unused Casual Leave shall be carried forward to subsequent months within the same Financial Year.
 
-1.6.2 Any unused Casual Leave balance as at 31 March of each Calendar Year shall lapse and shall not be carried forward into the following Calendar Year.
+1.6.2 Any unused Casual Leave balance as at 31 March, being the last day of the Financial Year, shall lapse and shall not be carried forward into the following Financial Year.
 
 1.6.3 No encashment shall be allowed in respect of Casual Leave or Sick Leave, whether during service or upon separation.
 
@@ -111,7 +112,7 @@ This Policy applies to all Employees as defined in the *Scope and Applicability*
 
 1.7.2 For any Sick Leave exceeding two (2) consecutive Working Days, the Employee shall submit a medical certificate issued by a registered medical practitioner, failing which the absence shall be treated as Loss of Pay.
 
-1.7.3 Sick Leave shall not be carried forward to the next Calendar Year and shall lapse if unused.
+1.7.3 Sick Leave shall not be carried forward to the next Financial Year and shall lapse if unused.
 
 ## 1.8 Maternity, Paternity, and Adoption Leave
 
@@ -187,7 +188,7 @@ The list of declared public holidays for the relevant Calendar Year shall be pub
 |---|---|
 | Document Title | Typhoon Electronics — Attendance & Leave Policy |
 | Version | 1.0 |
-| Effective Date | 01 June 2026 |
+| Effective Date | 01 April 2026 |
 | Approved By | Mr. Michael Raj A, Chief Executive Officer |
 | Owner | Human Resources Function |
 | Review Cycle | Annual, or earlier upon legislative or organisational change |

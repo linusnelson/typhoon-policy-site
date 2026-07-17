@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { str } from "@/lib/action-utils";
 import type { ActionState } from "@/lib/action-utils";
 import { computeLeaveDays, type LeaveDuration } from "@/lib/engine/leave-days";
+import { fyStartYearFromKey } from "@/lib/leave-year";
 
 const VALID_DURATIONS: LeaveDuration[] = [
   "full_day",
@@ -163,7 +164,7 @@ export async function cancelMyLeave(formData: FormData): Promise<void> {
 
   // Restore the balance only if it had been approved (already deducted).
   if (wasApproved && req.leave_type_id) {
-    const year = Number((req.start_date as string).slice(0, 4));
+    const year = fyStartYearFromKey(req.start_date as string);
     const { data: bal } = await supabase
       .from("leave_balances")
       .select("id, used")
@@ -283,7 +284,7 @@ export async function applyMyLeave(
   // Balance check (skipped for unlimited types).
   const isUnlimited = (policy?.is_unlimited as boolean) ?? false;
   if (!isUnlimited) {
-    const year = Number(startDate.slice(0, 4));
+    const year = fyStartYearFromKey(startDate);
     const { data: bal } = await supabase
       .from("leave_balances")
       .select("earned, used, carried_forward")

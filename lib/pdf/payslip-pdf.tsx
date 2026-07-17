@@ -1,5 +1,6 @@
 import React from "react";
-import { Document, Page, View, Text, Image, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
+import { PdfHeader } from "./header";
 import { PDF } from "./theme";
 
 // Monthly payslip, generated from the payroll CSV import (actions/payslips.ts)
@@ -10,25 +11,6 @@ import { PDF } from "./theme";
 
 const s = StyleSheet.create({
   page: { paddingTop: 40, paddingBottom: 56, paddingHorizontal: 44 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    borderBottomWidth: 2,
-    borderBottomColor: PDF.brand,
-    paddingBottom: 12,
-  },
-  emblem: { width: 44, height: 44 },
-  company: { fontSize: 14, fontFamily: "Helvetica-Bold", color: PDF.brand },
-  address: { fontSize: 8, color: PDF.gray500, marginTop: 3, lineHeight: 1.4 },
-  title: {
-    fontSize: 11,
-    fontFamily: "Helvetica-Bold",
-    color: PDF.ink,
-    textAlign: "center",
-    marginTop: 14,
-    marginBottom: 12,
-  },
   // Employee / statutory info grid — two label:value pairs per row.
   infoBox: { borderWidth: 1, borderColor: PDF.gray200, borderRadius: 6, padding: 10 },
   infoRow: { flexDirection: "row", marginBottom: 5 },
@@ -101,7 +83,6 @@ export interface PayslipPdfData {
   companyName: string;
   companyAddress: string; // may be "" when not configured yet
   monthLabel: string; // "April 2026"
-  emblemDataUrl: string;
   // Info grid — left column (from DB)
   employeeName: string;
   employeeCode: string;
@@ -183,17 +164,11 @@ export function PayslipPdf(d: PayslipPdfData) {
       author={d.companyName}
     >
       <Page size="A4" style={s.page}>
-        <View style={s.header}>
-          <Image src={d.emblemDataUrl} style={s.emblem} />
-          <View style={{ flex: 1 }}>
-            <Text style={s.company}>{d.companyName.toUpperCase()}</Text>
-            {d.companyAddress ? (
-              <Text style={s.address}>{d.companyAddress}</Text>
-            ) : null}
-          </View>
-        </View>
-
-        <Text style={s.title}>Payslip for the month of {d.monthLabel}</Text>
+        <PdfHeader
+          companyName={d.companyName}
+          companyAddress={d.companyAddress}
+          documentTitle={`Payslip for the month of ${d.monthLabel}`}
+        />
 
         <View style={s.infoBox}>
           <InfoRow l1="Name" v1={d.employeeName} l2="Employee No" v2={d.employeeCode} />

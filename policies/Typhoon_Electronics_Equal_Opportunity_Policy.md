@@ -10,7 +10,7 @@
 | Brand Name | Typhoon Electronics |
 | Registered Office | Maraimalai Nagar, Tamil Nadu, India |
 | Document Type | Equal Opportunity & Anti-Discrimination Policy |
-| Effective Date | 01 June 2026 |
+| Effective Date | 01 April 2026 |
 | Version | 1.0 |
 | Approved By | Mr. Michael Raj A, Chief Executive Officer |
 | Governing Law | Rights of Persons with Disabilities Act, 2016; Constitution of India (Articles 14, 15, 16); Tamil Nadu Shops & Establishments Act, 1947; applicable Central labour legislation |
@@ -43,7 +43,7 @@ For the purposes of this Policy, the following terms shall bear the meanings asc
 
 - **"Company"** means Typhoon Electronics Solutions, including its successors and assigns.
 - **"Code of Conduct"** means the Typhoon Electronics Code of Conduct, issued separately as part of the HR Policy Manual.
-- **"Effective Date"** means 1 June 2026.
+- **"Effective Date"** means 1 April 2026.
 - **"Employee"** has the meaning given in the *Scope and Applicability* section above.
 - **"HR"** or **"Human Resources"** means the function or person designated by the Company to administer this Policy.
 - **"Management"** means the Chief Executive Officer and such other persons as the CEO may designate.
@@ -125,7 +125,7 @@ This Policy applies to all Employees as defined in the *Scope and Applicability*
 |---|---|
 | Document Title | Typhoon Electronics — Equal Opportunity & Anti-Discrimination Policy |
 | Version | 1.0 |
-| Effective Date | 01 June 2026 |
+| Effective Date | 01 April 2026 |
 | Approved By | Mr. Michael Raj A, Chief Executive Officer |
 | Owner | Human Resources Function |
 | Review Cycle | Annual, or earlier upon legislative or organisational change |

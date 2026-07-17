@@ -10,7 +10,7 @@
 | Brand Name | Typhoon Electronics |
 | Registered Office | Maraimalai Nagar, Tamil Nadu, India |
 | Document Type | Code of Conduct |
-| Effective Date | 01 June 2026 |
+| Effective Date | 01 April 2026 |
 | Version | 1.0 |
 | Approved By | Mr. Michael Raj A, Chief Executive Officer |
 | Governing Law | Tamil Nadu Shops & Establishments Act, 1947; Prevention of Corruption Act, 1988; Information Technology Act, 2000; applicable Central labour legislation |
@@ -42,7 +42,7 @@ For the purposes of this Code, the following terms shall bear the meanings ascri
 
 - **"Company"** means Typhoon Electronics Solutions, including its successors and assigns.
 - **"Confidential Information"** has the meaning given at clause 1.5.2.
-- **"Effective Date"** means 1 June 2026.
+- **"Effective Date"** means 1 April 2026.
 - **"Employee"** has the meaning given in the *Scope and Applicability* section above.
 - **"Equal Opportunity Policy"** means the Typhoon Electronics Equal Opportunity & Anti-Discrimination Policy, issued separately as part of the HR Policy Manual.
 - **"HR"** or **"Human Resources"** means the function or person designated by the Company to administer this Code.
@@ -213,7 +213,7 @@ The Company is built on, and committed to upholding, the following core values, 
 |---|---|
 | Document Title | Typhoon Electronics — Code of Conduct |
 | Version | 1.0 |
-| Effective Date | 01 June 2026 |
+| Effective Date | 01 April 2026 |
 | Approved By | Mr. Michael Raj A, Chief Executive Officer |
 | Owner | Human Resources Function |
 | Review Cycle | Annual, or earlier upon legislative or organisational change |

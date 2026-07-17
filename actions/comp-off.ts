@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, AuthzError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { type ActionState, str, num } from "@/lib/action-utils";
+import { fyStartYearFromDate } from "@/lib/leave-year";
 
 // Grant comp-off to an employee: record the grant, credit the CO leave balance,
 // and notify. Mirrors clock_bays grantCompOff.
@@ -53,8 +54,9 @@ export async function grantCompOff(
     .eq("code", "CO")
     .maybeSingle();
   if (coType?.id) {
-    const year = new Date(new Date().getTime() + (5 * 60 + 30) * 60_000)
-      .getUTCFullYear();
+    const year = fyStartYearFromDate(
+      new Date(new Date().getTime() + (5 * 60 + 30) * 60_000),
+    );
     const { data: bal } = await supabase
       .from("leave_balances")
       .select("id, earned")

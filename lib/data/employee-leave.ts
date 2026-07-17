@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { istToday } from "@/lib/ist";
+import { fyStartYearFromKey } from "@/lib/leave-year";
 
 // Employee self-serve leave data. RLS scopes every query to the signed-in
 // employee. Mirrors clock_bays LeaveRepository.myBalances / myRequests.
@@ -41,7 +42,7 @@ export async function getMyLeaveBalances(
   employeeId: string
 ): Promise<MyLeaveBalance[]> {
   const supabase = await createClient();
-  const year = Number(istToday().slice(0, 4));
+  const year = fyStartYearFromKey(istToday());
 
   const [{ data: types }, { data: policies }, { data: balances }] =
     await Promise.all([

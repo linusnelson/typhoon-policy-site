@@ -20,7 +20,10 @@ config({ path: ".env.local" });
 
 const POLICIES_DIR = "./policies";
 const VERSION = "1.0";
-const EFFECTIVE = "2026-06-01";
+// All six documents take effect from the start of FY 2026-27 (1 Apr 2026 –
+// 31 Mar 2027), the period they govern. Keep in step with the "Effective Date"
+// row in each markdown file's document control table.
+const EFFECTIVE = "2026-04-01";
 const OBSOLETE_SLUGS = ["hr-policy-manual", "preamble-scope-definitions"];
 
 // One document per file. Slugs are stable so re-seeding updates in place
@@ -58,7 +61,6 @@ const DOCS: { file: string; title: string; slug: string; effective?: string }[] 
     file: "Typhoon_Electronics_Employee_Loans_and_Advances_Policy.md",
     title: "Employee Loans & Advances Policy",
     slug: "employee-advance",
-    effective: "2026-07-01",
   },
 ];
 

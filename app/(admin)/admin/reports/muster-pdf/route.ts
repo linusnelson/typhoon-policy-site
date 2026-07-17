@@ -6,6 +6,7 @@ import { getMuster } from "@/lib/data/muster";
 import { getMyTeamMemberIds } from "@/lib/data/team";
 import { listDepartments, listLocations } from "@/lib/data/refs";
 import { MusterPdf } from "@/lib/pdf/muster-pdf";
+import { pdfCompanyName } from "@/lib/pdf/header";
 import { formatIstDateTime, istToday } from "@/lib/ist";
 
 export const runtime = "nodejs";
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 
   const buffer = await renderToBuffer(
     MusterPdf({
-      companyName: (org.data?.name as string) ?? "Typhoon Electronic Solutions",
+      companyName: pdfCompanyName(org.data),
       monthLabel,
       scopeLabel,
       generatedAt: formatIstDateTime(new Date()),
