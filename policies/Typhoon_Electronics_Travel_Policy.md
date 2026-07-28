@@ -85,10 +85,10 @@ This Policy applies to all Employees authorised to undertake business travel on 
 | Travel (flight, train, road) | Actuals, against original tickets/bills |
 | Accommodation (Stay) | Actuals, against original hotel invoice |
 | Local Transport (cabs, autos) | Actuals, against receipts or trip records |
-| Food / Meals | Fixed daily allowance of ₹ 450 per person per day, in lieu of bills |
+| Food / Meals | Fixed daily allowance of ₹ 350 per person per day, in lieu of bills |
 | Other approved expenses | Actuals, against original bills |
 
-1.5.2 The food allowance at ₹ 450 per person per day shall apply uniformly and shall not require submission of bills. Any expenditure on food in excess of this allowance shall be borne by the Employee.
+1.5.2 The food allowance at ₹ 350 per person per day shall apply uniformly and shall not require submission of bills. Any expenditure on food in excess of this allowance shall be borne by the Employee.
 
 1.5.3 The Company shall reimburse expenses on Stay, Food, and Transport. Heads not expressly listed (such as personal entertainment, alcoholic beverages, mini-bar charges, laundry for short trips, and similar items) shall not be reimbursable.
 
@@ -106,9 +106,15 @@ This Policy applies to all Employees authorised to undertake business travel on 
 
 ## 1.8 Reimbursement Payment
 
-1.8.1 Approved travel reimbursements shall be credited to the Employee along with the subsequent salary cycle following approval of the claim.
+1.8.1 Approved travel reimbursements shall be credited to the Employee along with salary, on the following cut-off basis:
 
-1.8.2 In cases of genuine emergency or financial hardship, an Employee may make a written request for expedited processing, which shall be considered by HR and Management on a case-by-case basis.
+(a) claims submitted **on or before the 25th day of a calendar month** shall be processed along with the salary for that month; and
+
+(b) claims submitted **after the 25th day of a calendar month** shall be processed along with the salary for the following month.
+
+1.8.2 The cut-off in clause 1.8.1 applies to the date of submission of the claim in the Employee Portal. A claim submitted before the cut-off but not approved in time for that month's payroll shall be processed with the next salary cycle following approval.
+
+1.8.3 In cases of genuine emergency or financial hardship, an Employee may make a written request for expedited processing, which shall be considered by HR and Management on a case-by-case basis.
 
 ## 1.9 Travel Advances
 

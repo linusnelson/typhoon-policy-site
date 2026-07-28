@@ -444,6 +444,10 @@ export interface ExpenseClaim {
   reimbursed_by: string | null;
   reimbursed_at: string | null;
   payment_reference: string | null;
+  // Colleagues this bill also paid for (empty for a normal solo claim). Widens
+  // the daily food cap by the head count and consumes each covered person's
+  // own limit by their per-head share.
+  covered_employee_ids: string[];
   created_at: string;
 }
 

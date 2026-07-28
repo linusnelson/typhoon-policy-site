@@ -108,6 +108,12 @@ export default async function ExpenseDetailPage({
               />
             </>
           )}
+          {claim.coveredNames.length > 0 && (
+            <Row
+              label="Also paid for"
+              value={`${claim.coveredNames.map((c) => c.name).join(", ")} — ${claim.coveredNames.length + 1} people on this bill`}
+            />
+          )}
           {claim.description && (
             <Row label="Description" value={claim.description} />
           )}
@@ -120,8 +126,18 @@ export default async function ExpenseDetailPage({
             Daily food limit context
           </h2>
           <p className="text-sm text-gray-600">
-            Limit {formatINR(foodLimit)}/day · other food claims on{" "}
-            {formatIstDate(claim.bill_date)}:{" "}
+            Limit {formatINR(foodLimit)}/day
+            {claim.coveredNames.length > 0 && (
+              <>
+                {" "}
+                × {claim.coveredNames.length + 1} people ={" "}
+                <span className="font-semibold text-ink">
+                  {formatINR(foodLimit * (claim.coveredNames.length + 1))}
+                </span>
+              </>
+            )}{" "}
+            · other food claims on {formatIstDate(claim.bill_date)} for these
+            people:{" "}
             <span className="font-semibold text-ink">
               {formatINR(claim.foodDayOtherTotal)}
             </span>{" "}
@@ -130,12 +146,18 @@ export default async function ExpenseDetailPage({
               {formatINR(
                 Math.min(
                   claim.amount,
-                  Math.max(0, foodLimit - claim.foodDayOtherTotal)
+                  Math.max(
+                    0,
+                    foodLimit * (claim.coveredNames.length + 1) -
+                      claim.foodDayOtherTotal
+                  )
                 )
               )}
             </span>{" "}
             after the cap (recomputed at approval). Food with a client belongs
             under Client Hospitality, which is uncapped.
+            {claim.coveredNames.length > 0 &&
+              " Everyone covered here has that much less of their own limit for the day."}
           </p>
         </Card>
       )}

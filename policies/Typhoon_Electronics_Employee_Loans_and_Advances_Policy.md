@@ -95,11 +95,11 @@ This Policy applies to all Loans/Advances requested on or after the Effective Da
 
 1.5.2 The **Configured Percentage** is **fifty per cent (50%)**, applied uniformly across the organisation. This corresponds to the statutory ceiling on deductions from wages — fifty per cent (50%) of wages in a wage period under Section 7(3) of the Payment of Wages Act, 1936 and Section 18(3) of the Code on Wages, 2019. Accordingly, the maximum EMI a new Loan/Advance may carry is **50% of (Declared Salary − Declared EMIs)**, less the EMIs of any open Company Loans/Advances.
 
-1.5.3 The maximum tenure of a Loan/Advance is **eight (8) months**. The maximum amount of a Loan/Advance shall be the **lowest of**:
+1.5.3 The maximum tenure of a Loan/Advance is **ten (10) months**. The maximum amount of a Loan/Advance shall be the **lowest of**:
 
 (a) the fixed monetary ceiling configured in the Employee Portal, which applies organisation-wide;
 (b) the configured multiple of the Declared Salary, where such a multiple is configured; and
-(c) the Repayment Capacity multiplied by the maximum tenure of eight (8) months.
+(c) the Repayment Capacity multiplied by the maximum tenure of ten (10) months.
 
 1.5.4 The applicable limits and the resulting eligibility for the amount and tenure requested are **displayed to the Employee in the Employee Portal at the time of application**, before submission.
 
@@ -109,7 +109,7 @@ This Policy applies to all Loans/Advances requested on or after the Effective Da
 
 (a) the Declared Salary;
 (b) the amount requested;
-(c) the number of repayment months proposed (any tenure up to the maximum of eight (8) months, at the Employee's choice); and
+(c) the number of repayment months proposed (any tenure up to the maximum of ten (10) months, at the Employee's choice); and
 (d) the reason for the request, where the configured policy requires a reason.
 
 1.6.2 The Employee Portal computes the Repayment Capacity from the declarations and validates the application before submission; an application whose EMI exceeds the Repayment Capacity, or which otherwise fails the configured conditions, cannot be submitted. The Portal indicates the minimum tenure at which the requested amount would become eligible.
@@ -191,6 +191,6 @@ This Policy applies to all Loans/Advances requested on or after the Effective Da
 
 The following items are flagged for completion prior to, or shortly after, publication and circulation of this Policy:
 
-1. **Configured Limits (clause 1.5):** Confirmation and publication in the Employee Portal of the organisation-wide monetary ceiling, minimum tenure, cooling-off period, and concurrency limit. (The Configured Percentage is fixed at 50% and the maximum tenure at 8 months per clause 1.5.)
+1. **Configured Limits (clause 1.5):** Confirmation and publication in the Employee Portal of the organisation-wide monetary ceiling, minimum tenure, cooling-off period, and concurrency limit. (The Configured Percentage is fixed at 50% and the maximum tenure at 10 months per clause 1.5.)
 
 *End of Policy.*

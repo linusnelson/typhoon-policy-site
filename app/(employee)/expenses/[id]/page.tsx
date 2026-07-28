@@ -5,8 +5,9 @@ import { requireEmployee } from "@/lib/auth";
 import { moduleEnabled } from "@/lib/data/org";
 import { getExpense } from "@/lib/data/expenses";
 import { signExpenseBillUrl } from "@/lib/supabase/storage";
-import { cancelMyExpense } from "@/actions/expenses";
+import { cancelMyExpense, deleteMyExpenseDraft } from "@/actions/expenses";
 import { BillImageZoom } from "@/components/expenses/BillImageZoom";
+import { ConfirmSubmitButton } from "@/components/expenses/ConfirmSubmitButton";
 import { Badge, Button, Card } from "@/components/ui";
 import { ExpenseStatusBadge } from "@/components/employee/ExpenseStatusBadge";
 import { formatINR } from "@/lib/format";
@@ -86,6 +87,12 @@ export default async function MyExpenseDetailPage({
               }-wheeler)`}
             />
           )}
+          {claim.coveredNames.length > 0 && (
+            <Row
+              label="Also paid for"
+              value={`${claim.coveredNames.map((c) => c.name).join(", ")} — ${claim.coveredNames.length + 1} people on this bill`}
+            />
+          )}
           {claim.description && (
             <Row label="Description" value={claim.description} />
           )}
@@ -160,18 +167,39 @@ export default async function MyExpenseDetailPage({
         </Card>
       )}
 
-      {claim.status === "pending" && (
+      {["draft", "pending", "rejected"].includes(claim.status) && (
         <Card className="flex flex-wrap items-center justify-between gap-3 p-5">
           <p className="text-sm text-gray-600">
-            Still pending — you can withdraw this claim. To change amounts or
-            bills, edit it in the ClockBays app.
+            {claim.status === "draft"
+              ? "Still a draft — the approvers cannot see it until you submit this visit’s expenses."
+              : claim.status === "rejected"
+                ? "Rejected — edit it to fix what was flagged and send it back for approval."
+                : "Still pending — you can amend it or withdraw it while it waits."}
           </p>
-          <form action={cancelMyExpense}>
-            <input type="hidden" name="id" value={claim.id} />
-            <Button variant="secondary" type="submit">
-              Cancel expense
-            </Button>
-          </form>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link href={`/expenses/${claim.id}/edit`}>
+              <Button variant="secondary">Edit</Button>
+            </Link>
+            {claim.status === "pending" && (
+              <form action={cancelMyExpense}>
+                <input type="hidden" name="id" value={claim.id} />
+                <Button variant="ghost" type="submit">
+                  Withdraw
+                </Button>
+              </form>
+            )}
+            {claim.status === "draft" && (
+              <form action={deleteMyExpenseDraft}>
+                <input type="hidden" name="id" value={claim.id} />
+                <ConfirmSubmitButton
+                  variant="ghost"
+                  label="Delete draft"
+                  pendingLabel="Deleting…"
+                  confirm="Delete this draft and its bill files? This cannot be undone."
+                />
+              </form>
+            )}
+          </div>
         </Card>
       )}
     </div>

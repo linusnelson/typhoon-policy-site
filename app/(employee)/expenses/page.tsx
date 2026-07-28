@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Download } from "lucide-react";
+import { Download, Plus } from "lucide-react";
 import { requireEmployee } from "@/lib/auth";
 import { moduleEnabled } from "@/lib/data/org";
 import { getMyExpenses, groupExpensesByVisit } from "@/lib/data/expenses";
-import { Badge, Card } from "@/components/ui";
+import { submitExpenseGroup } from "@/actions/expenses";
+import { Badge, Button, Card } from "@/components/ui";
+import { ConfirmSubmitButton } from "@/components/expenses/ConfirmSubmitButton";
 import { ExpenseStatusBadge } from "@/components/employee/ExpenseStatusBadge";
 import { formatINR } from "@/lib/format";
 import { formatIstDate } from "@/lib/ist";
@@ -32,12 +34,21 @@ export default async function MyExpensesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-ink">My Expenses</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Bills you claimed against client visits — submitted from the ClockBays
-          app.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-ink">
+            My Expenses
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Bills you claimed against client visits, from here or the ClockBays
+            app.
+          </p>
+        </div>
+        <Link href="/expenses/new">
+          <Button>
+            <Plus className="h-4 w-4" /> Add expenses
+          </Button>
+        </Link>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -47,8 +58,15 @@ export default async function MyExpensesPage() {
       </div>
 
       {groups.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-gray-400">
-          No expenses yet. Add one from the Expenses tab in the ClockBays app.
+        <Card className="p-10 text-center">
+          <p className="text-sm text-gray-400">
+            No expenses yet. Claim what you spent on a client visit.
+          </p>
+          <Link href="/expenses/new" className="mt-4 inline-block">
+            <Button>
+              <Plus className="h-4 w-4" /> Add expenses
+            </Button>
+          </Link>
         </Card>
       ) : (
         <div className="space-y-4">
@@ -86,6 +104,30 @@ export default async function MyExpensesPage() {
                   )}
                 </div>
               </div>
+
+              {/* Drafts are invisible to the approvers until the visit's whole
+                  group is sent — one submission, one notification. */}
+              {g.scheduleId && (g.statusCounts.draft ?? 0) > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-warning-soft px-4 py-3">
+                  <p className="text-sm font-medium text-warning-deep">
+                    {g.statusCounts.draft} draft
+                    {g.statusCounts.draft === 1 ? "" : "s"} not yet sent for
+                    approval.
+                  </p>
+                  <form action={submitExpenseGroup}>
+                    <input
+                      type="hidden"
+                      name="scheduleId"
+                      value={g.scheduleId}
+                    />
+                    <ConfirmSubmitButton
+                      label={`Submit ${g.statusCounts.draft} expense${g.statusCounts.draft === 1 ? "" : "s"}`}
+                      pendingLabel="Submitting…"
+                      confirm="Send this visit's draft expenses to the approvers?"
+                    />
+                  </form>
+                </div>
+              )}
 
               <div className="divide-y divide-gray-100">
                 {g.claims.map((r) => {

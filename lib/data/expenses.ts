@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { foodUsedForHeads } from "@/lib/engine/expense";
+import { istToday } from "@/lib/ist";
 import type {
   ExpenseAttachment,
   ExpenseClaim,
@@ -208,8 +210,12 @@ export interface ExpenseDetail extends ExpenseListRow {
   visitDate: string | null;
   reviewerName: string | null;
   reimburserName: string | null;
-  // Sum of the employee's OTHER same-day food reimbursables (approval context).
+  // Sum of the OTHER same-day food reimbursables feeding the same heads
+  // (approval context).
   foodDayOtherTotal: number;
+  // Names of the colleagues this bill also paid for, for the approver to see
+  // why the cap was wider than one person's limit.
+  coveredNames: Array<{ id: string; name: string }>;
 }
 
 export async function getExpense(id: string): Promise<ExpenseDetail | null> {
@@ -223,7 +229,8 @@ export async function getExpense(id: string): Promise<ExpenseDetail | null> {
   // Visit context comes from the embed (normalizeClaim). Reviewer names +
   // food-day context, best-effort in parallel.
   const claim = normalizeClaim(data as unknown as ClaimJoinRow);
-  const [reviewer, reimburser, foodDayOtherTotal] = await Promise.all([
+  const covered = claim.covered_employee_ids ?? [];
+  const [reviewer, reimburser, foodDayOtherTotal, coveredRows] = await Promise.all([
     claim.reviewed_by
       ? supabase
           .from("employees")
@@ -240,7 +247,14 @@ export async function getExpense(id: string): Promise<ExpenseDetail | null> {
           .maybeSingle()
           .then((r) => r.data)
       : null,
-    getFoodDayTotal(claim.employee_id, claim.bill_date, claim.id),
+    getFoodDayTotal(claim.employee_id, claim.bill_date, claim.id, covered),
+    covered.length
+      ? supabase
+          .from("employees")
+          .select("id, name")
+          .in("id", covered)
+          .then((r) => r.data)
+      : null,
   ]);
 
   return {
@@ -248,6 +262,10 @@ export async function getExpense(id: string): Promise<ExpenseDetail | null> {
     reviewerName: (reviewer?.name as string | null) ?? null,
     reimburserName: (reimburser?.name as string | null) ?? null,
     foodDayOtherTotal,
+    coveredNames: (coveredRows ?? []).map((e) => ({
+      id: e.id as string,
+      name: (e.name as string | null) ?? "Colleague",
+    })),
   };
 }
 
@@ -258,20 +276,187 @@ export async function getExpense(id: string): Promise<ExpenseDetail | null> {
 export async function getFoodDayTotal(
   employeeId: string,
   billDate: string,
+  excludeClaimId?: string,
+  alsoCovering: string[] = []
+): Promise<number> {
+  return foodDayUsage(
+    [employeeId, ...alsoCovering],
+    billDate,
+    ["pending", "approved", "reimbursed"],
+    excludeClaimId
+  );
+}
+
+// Same sum at SUBMISSION time, which additionally counts drafts: a saved-but-
+// unsubmitted food bill already eats into the day's limit, so the number the
+// employee sees while filling the form matches the one the app shows
+// (ExpenseRepository.foodReimbursedSoFar). getFoodDayTotal above stays
+// draft-free because it decides money at approval.
+// It additionally accounts for SHARED meals: when a colleague's bill covered
+// this employee, their per-head share of it has already consumed part of this
+// employee's limit. `heads` is the payer plus everyone they are covering — the
+// cap for the new claim is limit × heads, so the usage must be measured across
+// the same set of people.
+export async function getFoodDayTotalForSubmission(
+  employeeId: string,
+  billDate: string,
+  excludeClaimId?: string,
+  alsoCovering: string[] = []
+): Promise<number> {
+  return foodDayUsage(
+    [employeeId, ...alsoCovering],
+    billDate,
+    ["draft", "pending", "approved", "reimbursed"],
+    excludeClaimId
+  );
+}
+
+// Shared core for both food totals. Pulls every food claim on the date that
+// feeds any of `heads` — whether they paid for it or were covered by it — and
+// splits each bill per head (see foodUsedForHeads).
+async function foodDayUsage(
+  heads: string[],
+  billDate: string,
+  statuses: string[],
   excludeClaimId?: string
 ): Promise<number> {
   const supabase = await createClient();
-  let query = supabase
+  const list = heads.join(",");
+  const { data } = await supabase
     .from("expense_claims")
-    .select("id, reimbursable_amount")
-    .eq("employee_id", employeeId)
+    .select("id, employee_id, reimbursable_amount, covered_employee_ids")
     .eq("category", "food")
     .eq("bill_date", billDate)
-    .in("status", ["pending", "approved", "reimbursed"]);
-  if (excludeClaimId) query = query.neq("id", excludeClaimId);
-  const { data } = await query;
-  return (data ?? []).reduce((s, r) => s + Number(r.reimbursable_amount), 0);
+    .in("status", statuses)
+    .or(`employee_id.in.(${list}),covered_employee_ids.ov.{${list}}`);
+
+  return foodUsedForHeads(
+    (data ?? []).map((r) => ({
+      id: r.id as string,
+      reimbursable: Number(r.reimbursable_amount),
+      payerId: r.employee_id as string,
+      coveredIds: (r.covered_employee_ids ?? []) as string[],
+    })),
+    heads,
+    excludeClaimId
+  );
 }
+
+// ── Visit schedules an expense can be filed against ──────────────────────────
+
+export interface ExpenseVisitTarget {
+  scheduleId: string;
+  visitDate: string; // "YYYY-MM-DD"
+  label: string;
+  clients: string; // comma-separated ("" if none planned)
+  // The trip's OTHER participants, when this visit was planned as a group.
+  // These are the only people an expense on this visit may be said to cover.
+  companions: Array<{ id: string; name: string }>;
+}
+
+// The employee's own visit schedules inside the submission window, newest
+// first. Expenses link ONLY to schedules (never ad-hoc quick visits) — the
+// INSERT policy enforces that, so an employee with no schedule in the window
+// cannot file at all and the form says so. Any schedule status is offered,
+// matching the app's picker.
+export async function listMyVisitTargets(
+  employeeId: string,
+  windowDays: number
+): Promise<ExpenseVisitTarget[]> {
+  const supabase = await createClient();
+  const from = new Date(`${istToday()}T00:00:00Z`);
+  from.setUTCDate(from.getUTCDate() - windowDays);
+
+  const { data } = await supabase
+    .from("visit_schedules")
+    .select(
+      "id, visit_date, purpose, time_window, visit_group_id, client_visits(client_name)"
+    )
+    .eq("employee_id", employeeId)
+    .gte("visit_date", from.toISOString().slice(0, 10))
+    .order("visit_date", { ascending: false });
+
+  const rows = (data ?? []) as VisitScheduleTargetRow[];
+
+  // Companions come from the sibling schedules sharing a visit_group_id — the
+  // group's members are readable thanks to vs_select_group_member. One query
+  // for every group at once rather than one per visit.
+  const groupIds = [
+    ...new Set(rows.map((r) => r.visit_group_id).filter((g): g is string => !!g)),
+  ];
+  const companionsByGroup = new Map<string, Array<{ id: string; name: string }>>();
+  if (groupIds.length) {
+    const { data: siblings } = await supabase
+      .from("visit_schedules")
+      // visit_schedules has TWO employee FKs (employee_id, approved_by), so
+      // the embed must name the one it means or PostgREST refuses.
+      .select(
+        "visit_group_id, employee_id, employees!visit_schedules_employee_id_fkey(name)"
+      )
+      .in("visit_group_id", groupIds)
+      .neq("employee_id", employeeId);
+    for (const s of (siblings ?? []) as unknown as VisitGroupSiblingRow[]) {
+      if (!s.visit_group_id) continue;
+      const list = companionsByGroup.get(s.visit_group_id) ?? [];
+      list.push({ id: s.employee_id, name: s.employees?.name ?? "Colleague" });
+      companionsByGroup.set(s.visit_group_id, list);
+    }
+  }
+
+  return rows.map((s) => ({
+    scheduleId: s.id,
+    visitDate: s.visit_date,
+    label:
+      s.purpose ||
+      `Scheduled visit — ${WINDOW_LABELS[s.time_window ?? ""] ?? "Visit"}`,
+    clients: (s.client_visits ?? [])
+      .map((c) => c.client_name)
+      .filter((n): n is string => !!n)
+      .join(", "),
+    companions: s.visit_group_id
+      ? (companionsByGroup.get(s.visit_group_id) ?? [])
+      : [],
+  }));
+}
+
+// Everyone on a visit's trip, used server-side to check that a claim only
+// says it covered people who were actually there.
+export async function getVisitCompanionIds(
+  scheduleId: string,
+  employeeId: string
+): Promise<string[]> {
+  const supabase = await createClient();
+  const { data: own } = await supabase
+    .from("visit_schedules")
+    .select("visit_group_id")
+    .eq("id", scheduleId)
+    .eq("employee_id", employeeId)
+    .maybeSingle();
+  const groupId = own?.visit_group_id as string | null | undefined;
+  if (!groupId) return [];
+
+  const { data } = await supabase
+    .from("visit_schedules")
+    .select("employee_id")
+    .eq("visit_group_id", groupId)
+    .neq("employee_id", employeeId);
+  return (data ?? []).map((r) => r.employee_id as string);
+}
+
+type VisitScheduleTargetRow = {
+  id: string;
+  visit_date: string;
+  purpose: string | null;
+  time_window: string | null;
+  visit_group_id: string | null;
+  client_visits: Array<{ client_name: string | null }> | null;
+};
+
+type VisitGroupSiblingRow = {
+  visit_group_id: string | null;
+  employee_id: string;
+  employees: { name: string | null } | null;
+};
 
 // ── Approver management ──────────────────────────────────────────────────────
 
