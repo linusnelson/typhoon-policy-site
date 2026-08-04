@@ -4,7 +4,7 @@ import { ArrowLeft, FileText } from "lucide-react";
 import { requireEmployee } from "@/lib/auth";
 import { moduleEnabled } from "@/lib/data/org";
 import { getExpense } from "@/lib/data/expenses";
-import { signExpenseBillUrl } from "@/lib/supabase/storage";
+import { expenseBillUrl } from "@/lib/supabase/storage";
 import { cancelMyExpense, deleteMyExpenseDraft } from "@/actions/expenses";
 import { BillImageZoom } from "@/components/expenses/BillImageZoom";
 import { ConfirmSubmitButton } from "@/components/expenses/ConfirmSubmitButton";
@@ -31,9 +31,7 @@ export default async function MyExpenseDetailPage({
   // owner check keeps approvers/admins on their review page for others' claims.
   if (!claim || claim.employee_id !== employee.id) notFound();
 
-  const signedUrls = await Promise.all(
-    claim.attachments.map((a) => signExpenseBillUrl(a.file_path))
-  );
+  const signedUrls = claim.attachments.map((a) => expenseBillUrl(a.file_path));
   const capped = claim.reimbursable_amount < claim.amount;
 
   return (

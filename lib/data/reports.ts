@@ -134,7 +134,8 @@ function buildEmployeeQuery(
       "id, employee_code, name, department_id, location_id, date_of_joining"
     )
     .eq("status", "active")
-    .neq("role", "admin");
+    .neq("role", "admin")
+    .eq("is_service_account", false);
   if (f.locationId) q = q.eq("location_id", f.locationId);
   if (f.departmentId) q = q.eq("department_id", f.departmentId);
   if (f.employeeIds) q = q.in("id", f.employeeIds);
@@ -652,7 +653,8 @@ export async function eventAttendanceReport(
         .from("employees")
         .select("id, employee_code, name, department_id, location_id")
         .eq("status", "active")
-        .neq("role", "admin"),
+        .neq("role", "admin")
+        .eq("is_service_account", false),
     ]);
 
   const eventRows = events ?? [];

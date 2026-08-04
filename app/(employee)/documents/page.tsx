@@ -4,11 +4,9 @@ import { getCurrentEmployee, getDocumentsWithStatus } from "@/lib/policies";
 import { getOrgModules } from "@/lib/data/org";
 import { getMyAdvances } from "@/lib/data/advances";
 import { getMyPayslips } from "@/lib/data/payslips";
-import { signPayslipUrl } from "@/lib/supabase/storage";
 import { Badge, Banner, Button, Card } from "@/components/ui";
 import { TabNav } from "@/components/ui/Tabs";
 import { AdvanceStatusBadge } from "@/components/employee/AdvanceStatusBadge";
-import { isServiceAccount } from "@/lib/config";
 import { formatINR, formatMonth } from "@/lib/format";
 import { formatIstDate } from "@/lib/ist";
 import type { DocumentWithStatus } from "@/lib/types";
@@ -66,7 +64,7 @@ async function PoliciesTab({
   // "all caught up" banner read as wrong. Admins manage drafts in
   // /admin/policies.
   const docs = all.filter((d) => d.currentVersion);
-  const isService = isServiceAccount(employee.email);
+  const isService = employee.is_service_account;
   const pending = docs.filter((d) => !d.signature);
 
   return (
@@ -148,14 +146,9 @@ function DocumentRow({
 // ── Payslips ─────────────────────────────────────────────────────────────────
 
 async function PayslipsTab({ employeeId }: { employeeId: string }) {
+  // No pre-signed storage URLs: downloads go through /payslips/[id]/download,
+  // which re-authorises every request. See that route for why.
   const slips = await getMyPayslips(employeeId);
-  const signed = new Map<string, string>();
-  await Promise.all(
-    slips.map(async (s) => {
-      const url = await signPayslipUrl(s.file_path);
-      if (url) signed.set(s.id, url);
-    })
-  );
 
   if (slips.length === 0) {
     return (
@@ -168,28 +161,27 @@ async function PayslipsTab({ employeeId }: { employeeId: string }) {
 
   return (
     <div className="space-y-2">
-      {slips.map((s) => {
-        const url = signed.get(s.id);
-        return (
-          <Card key={s.id} className="flex items-center justify-between gap-3 p-4">
-            <div>
-              <div className="font-display font-bold text-ink">
-                {formatMonth(s.period_month)}
-              </div>
-              <div className="text-xs text-gray-400">
-                Uploaded {formatIstDate(s.uploaded_at)}
-              </div>
+      {slips.map((s) => (
+        <Card key={s.id} className="flex items-center justify-between gap-3 p-4">
+          <div>
+            <div className="font-display font-bold text-ink">
+              {formatMonth(s.period_month)}
             </div>
-            {url && (
-              <a href={url} target="_blank" rel="noreferrer">
-                <Button variant="secondary" type="button">
-                  <Download className="h-4 w-4" /> Download
-                </Button>
-              </a>
-            )}
-          </Card>
-        );
-      })}
+            <div className="text-xs text-gray-400">
+              Uploaded {formatIstDate(s.uploaded_at)}
+            </div>
+          </div>
+          <a
+            href={`/payslips/${s.id}/download`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Button variant="secondary" type="button">
+              <Download className="h-4 w-4" /> Download
+            </Button>
+          </a>
+        </Card>
+      ))}
     </div>
   );
 }

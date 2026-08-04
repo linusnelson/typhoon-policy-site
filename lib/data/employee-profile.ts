@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { signSelfieUrl } from "@/lib/supabase/storage";
+import { selfieUrl } from "@/lib/supabase/storage";
 
 // Full self-serve profile (read-only fields + the employee-editable phone).
 // Mirrors the SalaryBox-style profile in clock_bays. RLS scopes to self.
@@ -55,7 +55,7 @@ export async function getMyProfile(employeeId: string): Promise<MyProfile | null
     employeeCode: d.employee_code,
     email: d.email,
     phone: d.phone,
-    photoUrl: await signSelfieUrl(d.photo_url),
+    photoUrl: selfieUrl(d.photo_url),
     designation: d.designation,
     department: d.departments?.name ?? null,
     location: d.locations?.name ?? null,

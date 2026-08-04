@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { isServiceAccount } from "@/lib/config";
 import {
   addMonths,
   checkEligibility,
@@ -106,9 +105,9 @@ export interface LoanPolicySignStatus {
 
 export async function getLoanPolicySignStatus(
   employeeId: string,
-  email: string | null
+  isServiceAccount: boolean // employees.is_service_account — never asked to sign
 ): Promise<LoanPolicySignStatus> {
-  if (isServiceAccount(email)) {
+  if (isServiceAccount) {
     return {
       required: false,
       published: true,

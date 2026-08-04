@@ -6,10 +6,12 @@ import { listRepaymentsForMonth, listDisbursalsForMonth } from "@/lib/data/advan
 import { csvCell } from "@/lib/csv";
 import { istToday } from "@/lib/ist";
 import { monthStart } from "@/lib/engine/advance";
+import { reimbursementExpectedForMonth } from "@/lib/data/expenses";
 import {
   PAYSLIP_TEMPLATE_COLUMNS,
   PAYSLIP_TEMPLATE_DISBURSAL_COLUMN,
   PAYSLIP_TEMPLATE_INSTALLMENT_COLUMN,
+  PAYSLIP_TEMPLATE_REIMBURSEMENT_COLUMN,
 } from "@/lib/engine/payslip-import";
 
 // Payslip import template for a month: one prefilled row per active employee
@@ -34,10 +36,11 @@ export async function GET(req: NextRequest) {
   const month = req.nextUrl.searchParams.get("month") ?? istToday().slice(0, 7);
   const monthKey = monthStart(month.length === 7 ? `${month}-01` : month);
 
-  const [statusRows, repayments, disbursals] = await Promise.all([
+  const [statusRows, repayments, disbursals, reimbursements] = await Promise.all([
     listPayslipStatusForMonth(monthKey), // active employees, sorted by name
     listRepaymentsForMonth(monthKey),
     listDisbursalsForMonth(monthKey),
+    reimbursementExpectedForMonth(monthKey),
   ]);
 
   const installmentByEmployee = new Map<string, number>();
@@ -63,6 +66,10 @@ export async function GET(req: NextRequest) {
           return (disbursals.get(r.employeeId) ?? 0).toFixed(2);
         case PAYSLIP_TEMPLATE_INSTALLMENT_COLUMN:
           return (installmentByEmployee.get(r.employeeId) ?? 0).toFixed(2);
+        case PAYSLIP_TEMPLATE_REIMBURSEMENT_COLUMN:
+          // Approved expense claims awaiting payment. Editing this figure
+          // fails the import — fix the claims, not the CSV.
+          return (reimbursements.get(r.employeeId) ?? 0).toFixed(2);
         default:
           return "0.00";
       }

@@ -61,7 +61,7 @@ export function SettingsForm({
   serviceAccounts,
 }: {
   org: OrgSettings;
-  serviceAccounts: string[];
+  serviceAccounts: Array<{ name: string; email: string }>;
 }) {
   const [state, action] = useActionState(updateOrgSettings, idleState);
   return (
@@ -142,23 +142,26 @@ export function SettingsForm({
           Service accounts
         </h2>
         <p className="mb-3 text-xs text-gray-400">
-          Shared mailboxes excluded from policy-signing compliance counts. They
-          may still sign in (e.g. as an admin) — configured in{" "}
-          <code className="rounded bg-gray-100 px-1 font-mono text-[11px]">
-            lib/config.ts
-          </code>
-          .
+          Login-only accounts. Excluded from payslips, punch reminders,
+          attendance reports, headcount, the org chart and policy-signing
+          compliance. They may still sign in (e.g. as an admin). Set with the
+          &ldquo;Service account&rdquo; toggle on an employee&apos;s record.
         </p>
-        <ul className="space-y-1">
-          {serviceAccounts.map((email) => (
-            <li
-              key={email}
-              className="rounded-lg bg-gray-50 px-3 py-2 font-mono text-xs text-gray-600"
-            >
-              {email}
-            </li>
-          ))}
-        </ul>
+        {serviceAccounts.length === 0 ? (
+          <p className="text-xs text-gray-400">None.</p>
+        ) : (
+          <ul className="space-y-1">
+            {serviceAccounts.map((a) => (
+              <li
+                key={a.email}
+                className="rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600"
+              >
+                <span className="font-medium text-ink">{a.name}</span>{" "}
+                <span className="font-mono">{a.email}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </Card>
 
       <SaveButton />

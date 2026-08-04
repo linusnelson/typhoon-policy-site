@@ -32,6 +32,7 @@ export async function listPayslipStatusForMonth(
       .from("employees")
       .select("id, name, employee_code")
       .eq("status", "active")
+      .eq("is_service_account", false) // login-only accounts draw no salary
       .order("name"),
     supabase.from("payslips").select("*").eq("period_month", monthKey),
   ]);
@@ -57,11 +58,16 @@ export interface PayslipImportEmployee {
   department: string;
   location: string;
   date_of_joining: string | null; // "YYYY-MM-DD"
+  is_service_account: boolean;
 }
 
 // Everything the CSV import needs to match rows and fill the payslip PDF's
 // identity fields (two-query merge for department/location names — PostgREST
 // has no LEFT JOIN from employees here).
+//
+// Service accounts are deliberately NOT filtered out here (unlike
+// listPayslipStatusForMonth): the parser needs to recognise the code so it can
+// say "that's a service account" instead of the misleading "no such employee".
 export async function listEmployeesForPayslipImport(): Promise<
   PayslipImportEmployee[]
 > {
@@ -70,7 +76,7 @@ export async function listEmployeesForPayslipImport(): Promise<
     supabase
       .from("employees")
       .select(
-        "id, name, employee_code, designation, department_id, location_id, date_of_joining"
+        "id, name, employee_code, designation, department_id, location_id, date_of_joining, is_service_account"
       )
       .eq("status", "active"),
     supabase.from("departments").select("id, name"),
@@ -88,5 +94,6 @@ export async function listEmployeesForPayslipImport(): Promise<
     department: deptName.get(e.department_id as string) ?? "",
     location: locName.get(e.location_id as string) ?? "",
     date_of_joining: (e.date_of_joining as string | null) ?? null,
+    is_service_account: (e.is_service_account as boolean | null) ?? false,
   }));
 }

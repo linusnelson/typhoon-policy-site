@@ -70,7 +70,8 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
       .from("employees")
       .select("id, name, location_id, date_of_joining, shift_id, department_id")
       .eq("status", "active")
-      .neq("role", "admin"),
+      .neq("role", "admin")
+      .eq("is_service_account", false),
     supabase
       .from("attendance_punches")
       .select("employee_id, work_type, punch_type, punched_at")

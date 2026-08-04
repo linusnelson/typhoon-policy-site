@@ -21,6 +21,8 @@ export interface EmployeeRow {
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
   role: EmployeeRole;
+  // Login-only account (no payslip, no punch reminders, not counted as staff).
+  is_service_account: boolean;
   status: EmployeeStatus;
   approved_at: string | null;
   created_at: string;

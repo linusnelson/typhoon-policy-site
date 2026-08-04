@@ -9,7 +9,6 @@ import {
 import { Badge, Card } from "@/components/ui";
 import { PolicyMarkdown } from "@/components/PolicyMarkdown";
 import { SignaturePanel } from "@/components/SignaturePanel";
-import { isServiceAccount } from "@/lib/config";
 
 export default async function DocumentPage({
   params,
@@ -59,12 +58,18 @@ export default async function DocumentPage({
             </div>
           )}
         </div>
-        <Link
-          href={`/documents/${id}/versions`}
-          className="shrink-0 text-sm font-medium text-brand hover:underline"
-        >
-          Version history
-        </Link>
+        {/* Admin-only. policy_versions RLS hides archived rows from
+            non-admins (20260612000000), so an employee opening this saw a
+            history containing only the current version — it read as broken.
+            The versions route enforces the same rule server-side. */}
+        {employee.role === "admin" && (
+          <Link
+            href={`/documents/${id}/versions`}
+            className="shrink-0 text-sm font-medium text-brand hover:underline"
+          >
+            Version history
+          </Link>
+        )}
       </div>
 
       {!currentVersion ? (
@@ -84,7 +89,7 @@ export default async function DocumentPage({
             <PolicyMarkdown content={currentVersion.content_md} />
           </Card>
 
-          {isServiceAccount(employee.email) ? (
+          {employee.is_service_account ? (
             <Card className="p-5 text-sm text-gray-600">
               This is a service account — signing is not required.
             </Card>

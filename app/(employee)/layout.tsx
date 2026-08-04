@@ -1,7 +1,6 @@
 import { getCurrentEmployee } from "@/lib/policies";
 import { getUnreadNotificationCount } from "@/lib/data/notifications";
 import { getOrgModules } from "@/lib/data/org";
-import { isServiceAccount } from "@/lib/config";
 import { PortalShell } from "@/components/nav/PortalShell";
 import { NotificationBell } from "@/components/nav/NotificationBell";
 import { UserMenu } from "@/components/nav/UserMenu";
@@ -30,7 +29,7 @@ export default async function EmployeeLayout({
       role={employee.role}
       modules={modules}
       isExpenseApprover={employee.is_expense_approver}
-      hideSelfServe={employee.role === "admin" || isServiceAccount(employee.email)}
+      hideSelfServe={employee.role === "admin" || employee.is_service_account}
       headerRight={
         <>
           <NotificationBell employeeId={employee.id} initialUnread={unread} />

@@ -647,3 +647,145 @@ export async function monthlyExpenseReport(
     approvedGrandTotal: employees.reduce((s, e) => s + e.approvedTotal, 0),
   };
 }
+
+// ── Reimbursement payout ─────────────────────────────────────────────────────
+
+export interface PayoutEmployeeRow {
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string | null;
+  claimCount: number;
+  total: number; // sum of reimbursable_amount
+}
+
+export interface ReimbursementPayout {
+  employees: PayoutEmployeeRow[]; // sorted by name
+  grandTotal: number;
+  claimCount: number;
+  truncated: boolean; // true = PAYOUT_MAX_CLAIMS hit, figures are incomplete
+}
+
+// Hard ceiling so one runaway query can't blow up the PDF render. Well above a
+// realistic unpaid queue (<50 staff); `truncated` surfaces it if ever reached
+// rather than silently under-reporting the amount owed.
+const PAYOUT_MAX_CLAIMS = 2000;
+
+// Everything approved and not yet reimbursed, whenever it was approved, rolled
+// up to one line per employee — the transfer sheet for whoever pays out.
+// Deliberately NOT month-scoped (unlike monthlyExpenseReport): a claim approved
+// in June that nobody has paid must still appear in August, or it falls through
+// the cracks. Read-only — claims are marked reimbursed elsewhere.
+export async function pendingReimbursementPayout(): Promise<ReimbursementPayout> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("expense_claims")
+    .select(CLAIM_WITH_EMPLOYEE)
+    .eq("status", "approved")
+    .order("bill_date", { ascending: true })
+    .limit(PAYOUT_MAX_CLAIMS);
+
+  const rows = (((data as unknown as ClaimJoinRow[] | null) ?? [])).map(
+    normalizeClaim
+  );
+
+  const byEmployee = new Map<string, PayoutEmployeeRow>();
+  for (const r of rows) {
+    const existing = byEmployee.get(r.employee_id);
+    if (existing) {
+      existing.claimCount += 1;
+      existing.total += r.reimbursable_amount;
+    } else {
+      byEmployee.set(r.employee_id, {
+        employeeId: r.employee_id,
+        employeeName: r.employeeName ?? "Unknown",
+        employeeCode: r.employeeCode,
+        claimCount: 1,
+        total: r.reimbursable_amount,
+      });
+    }
+  }
+
+  const employees = [...byEmployee.values()].sort((a, b) =>
+    a.employeeName.localeCompare(b.employeeName)
+  );
+
+  return {
+    employees,
+    grandTotal: employees.reduce((s, e) => s + e.total, 0),
+    claimCount: rows.length,
+    truncated: rows.length >= PAYOUT_MAX_CLAIMS,
+  };
+}
+
+// What each employee's payslip for `monthKey` should carry as E:REIMBURSEMENT,
+// keyed by employee id (absent = 0). Two parts:
+//
+//   1. approved-but-unreimbursed claims — whatever their age, matching the
+//      payout sheet and the "To reimburse" queue;
+//   2. claims already paid by THIS month's payslip.
+//
+// (2) is what makes a re-import work. Importing August marks its claims
+// reimbursed and links them; without counting them back, re-importing the same
+// August CSV would compare its reimbursement figure against a now-empty queue
+// and fail every row. The import releases those links before re-linking, so
+// the set it closes is exactly the set counted here.
+export async function reimbursementExpectedForMonth(
+  monthKey: string // "YYYY-MM-01"
+): Promise<Map<string, number>> {
+  const supabase = await createClient();
+
+  const { data: slips } = await supabase
+    .from("payslips")
+    .select("id")
+    .eq("period_month", monthKey);
+  const slipIds = ((slips as { id: string }[] | null) ?? []).map((s) => s.id);
+
+  const [{ data: open }, { data: linked }] = await Promise.all([
+    supabase
+      .from("expense_claims")
+      .select("employee_id, reimbursable_amount")
+      .eq("status", "approved")
+      .limit(PAYOUT_MAX_CLAIMS),
+    slipIds.length
+      ? supabase
+          .from("expense_claims")
+          .select("employee_id, reimbursable_amount")
+          .in("reimbursed_in_payslip_id", slipIds)
+          .limit(PAYOUT_MAX_CLAIMS)
+      : Promise.resolve({ data: [] as ClaimAmountRow[] }),
+  ]);
+
+  const totals = new Map<string, number>();
+  for (const r of [
+    ...(((open as ClaimAmountRow[] | null) ?? [])),
+    ...(((linked as ClaimAmountRow[] | null) ?? [])),
+  ]) {
+    totals.set(
+      r.employee_id,
+      (totals.get(r.employee_id) ?? 0) + Number(r.reimbursable_amount)
+    );
+  }
+  return totals;
+}
+
+interface ClaimAmountRow {
+  employee_id: string;
+  reimbursable_amount: number;
+}
+
+// The claims a payslip import will close for one employee: everything approved
+// and unpaid. Ordered oldest-first so the linkage is deterministic.
+export async function listClaimsToReimburse(
+  employeeId: string
+): Promise<Array<{ id: string; reimbursable_amount: number }>> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("expense_claims")
+    .select("id, reimbursable_amount")
+    .eq("employee_id", employeeId)
+    .eq("status", "approved")
+    .order("bill_date", { ascending: true });
+  return ((data as Array<{ id: string; reimbursable_amount: number }> | null) ?? []).map(
+    (r) => ({ id: r.id, reimbursable_amount: Number(r.reimbursable_amount) })
+  );
+}

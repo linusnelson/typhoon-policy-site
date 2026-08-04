@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { isServiceAccount } from "@/lib/config";
-import { signSelfieUrls } from "@/lib/supabase/storage";
+import { selfieUrls } from "@/lib/supabase/storage";
 
 // Org chart for the web Org map. Backed by the SECURITY DEFINER `org_chart`
 // RPC so any authenticated org member can see the full directory without
@@ -79,13 +78,14 @@ export async function getOrgChart(): Promise<OrgChart> {
     employees: [],
   };
 
-  // Drop service/role mailboxes (e.g. admin@…) entirely — they aren't people and
-  // shouldn't appear in leadership, as a manager, or anywhere in the chart.
-  const people = raw.employees.filter((e) => !isServiceAccount(e.email));
+  // Service accounts are excluded by the org_chart RPC itself
+  // (20260804000003) — they aren't people and shouldn't appear in leadership,
+  // as a manager, or anywhere in the chart.
+  const people = raw.employees;
 
   // Avatars are bare paths in the private `selfies` bucket — sign them all in
   // one request, then resolve per person.
-  const photos = await signSelfieUrls(people.map((e) => e.photo_url));
+  const photos = selfieUrls(people.map((e) => e.photo_url));
 
   const leadership = people
     .filter((e) => e.role === "admin")

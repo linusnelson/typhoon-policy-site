@@ -1,12 +1,15 @@
 import { requireAdmin } from "@/lib/auth";
 import { getOrg } from "@/lib/data/org";
-import { SERVICE_ACCOUNT_EMAILS } from "@/lib/config";
+import { listServiceAccounts } from "@/lib/data/employees";
 import { Card } from "@/components/ui";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 
 export default async function SettingsPage() {
   const admin = await requireAdmin();
-  const org = await getOrg(admin.org_id);
+  const [org, serviceAccounts] = await Promise.all([
+    getOrg(admin.org_id),
+    listServiceAccounts(),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -18,7 +21,7 @@ export default async function SettingsPage() {
       </div>
 
       {org ? (
-        <SettingsForm org={org} serviceAccounts={SERVICE_ACCOUNT_EMAILS} />
+        <SettingsForm org={org} serviceAccounts={serviceAccounts} />
       ) : (
         <Card className="p-8 text-center text-sm text-gray-400">
           Organization not found.

@@ -167,6 +167,25 @@ export function EmployeeForm({
           </Field>
         </div>
 
+        {/* Login-only accounts: no payslip, no punch nags, not counted as staff. */}
+        <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+          <input
+            type="checkbox"
+            name="is_service_account"
+            value="true"
+            defaultChecked={employee?.is_service_account ?? false}
+            className="mt-0.5 h-4 w-4 accent-brand"
+          />
+          <span className="text-sm text-ink">
+            Service account
+            <span className="mt-0.5 block text-xs text-gray-400">
+              A login-only account, not a member of staff. Excluded from the
+              payslip run and from punch-in/punch-out reminders. Still receives
+              admin notifications.
+            </span>
+          </span>
+        </label>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Designation">
             <Input

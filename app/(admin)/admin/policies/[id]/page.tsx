@@ -90,19 +90,28 @@ export default async function AdminDocumentPage({
                       : `Created ${formatIstDate(v.created_at)}`}
                   </span>
                 </div>
-                {v.status === "draft" && (
-                  <div className="flex items-center gap-2">
-                    <Link href={`/admin/policies/${id}/draft/${v.id}`}>
-                      <Button variant="secondary" type="button">
-                        Edit
-                      </Button>
-                    </Link>
-                    <form action={publishDraftVersion}>
-                      <input type="hidden" name="versionId" value={v.id} />
-                      <Button type="submit">Publish</Button>
-                    </form>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  {/* Read any version — superseded ones are otherwise
+                      unreadable, their text only living in the table. */}
+                  <Link href={`/admin/policies/${id}/versions/${v.id}`}>
+                    <Button variant="ghost" type="button">
+                      View
+                    </Button>
+                  </Link>
+                  {v.status === "draft" && (
+                    <>
+                      <Link href={`/admin/policies/${id}/draft/${v.id}`}>
+                        <Button variant="secondary" type="button">
+                          Edit
+                        </Button>
+                      </Link>
+                      <form action={publishDraftVersion}>
+                        <input type="hidden" name="versionId" value={v.id} />
+                        <Button type="submit">Publish</Button>
+                      </form>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>

@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { requireExpenseApprover, AuthzError } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getOrg, moduleEnabled } from "@/lib/data/org";
+import { reimbursementExpectedForMonth } from "@/lib/data/expenses";
 import {
   listEmployeesForPayslipImport,
   listPayslipStatusForMonth,
@@ -124,6 +126,21 @@ export async function deletePayslip(formData: FormData): Promise<void> {
     .maybeSingle();
   if (!slip) throw new AuthzError("Payslip not found.");
 
+  // Walk any claims this payslip paid back into the "To reimburse" queue
+  // first. The FK is ON DELETE SET NULL, so without this they would stay
+  // marked reimbursed with no record of what paid them — money owed, invisible.
+  // Service-role for the same reason as linkReimbursedClaims.
+  const { error: relErr } = await createAdminClient()
+    .from("expense_claims")
+    .update({
+      status: "approved",
+      reimbursed_by: null,
+      reimbursed_at: null,
+      reimbursed_in_payslip_id: null,
+    })
+    .eq("reimbursed_in_payslip_id", id);
+  if (relErr) throw new Error(relErr.message);
+
   await supabase.storage.from("payslips").remove([slip.file_path as string]);
   const { error } = await supabase.from("payslips").delete().eq("id", id);
   if (error) throw new Error(error.message);
@@ -194,6 +211,8 @@ function pdfDataForRow(
       .map((d) => ({ label: d.label, amount: AMOUNT.format(d.amount) })),
     totalEarnings: AMOUNT.format(row.gross),
     totalDeductions: AMOUNT.format(row.totalDeductions),
+    // Omitted from the payslip entirely when nothing was reimbursed.
+    reimbursement: row.reimbursement > 0 ? AMOUNT.format(row.reimbursement) : "",
     // No ₹ glyph in the PDF's built-in Helvetica — write "INR" like the totals.
     netPay: `INR ${AMOUNT.format(row.net)}`,
     netPayWords: amountInWordsINR(row.net),
@@ -205,6 +224,71 @@ function daysInMonthOf(monthKey: string): number {
   const y = Number(monthKey.slice(0, 4));
   const m = Number(monthKey.slice(5, 7));
   return new Date(Date.UTC(y, m, 0)).getUTCDate();
+}
+
+// Close the expense claims this payslip pays, and link them to it.
+//
+// Runs on the SERVICE-ROLE client, deliberately. The approver RLS policy on
+// expense_claims carries `employee_id <> auth_employee_id()` (the self-approval
+// fix in 20260710000002), so an accounts user importing a payroll batch that
+// includes their OWN reimbursement would have that UPDATE silently match zero
+// rows — the payslip would say paid while the claim stayed in the queue. This
+// isn't self-approval: approval already happened, this only records payment.
+//
+// Re-import safety: claims previously linked to this payslip are released
+// first, so the set closed here is exactly the set the parser validated
+// against (see reimbursementExpectedForMonth).
+async function linkReimbursedClaims(args: {
+  payslipId: string;
+  employeeId: string;
+  orgId: string;
+  approverId: string;
+  expected: number;
+}): Promise<void> {
+  const admin = createAdminClient();
+
+  // 1. Release anything this payslip closed on a previous import.
+  const { error: relErr } = await admin
+    .from("expense_claims")
+    .update({
+      status: "approved",
+      reimbursed_by: null,
+      reimbursed_at: null,
+      reimbursed_in_payslip_id: null,
+    })
+    .eq("reimbursed_in_payslip_id", args.payslipId);
+  if (relErr) throw new Error(`Could not release previous claims: ${relErr.message}`);
+
+  if (args.expected <= 0) return;
+
+  // 2. Close everything approved and unpaid for this employee.
+  const { data: closed, error: linkErr } = await admin
+    .from("expense_claims")
+    .update({
+      status: "reimbursed",
+      reimbursed_by: args.approverId,
+      reimbursed_at: new Date().toISOString(),
+      reimbursed_in_payslip_id: args.payslipId,
+    })
+    .eq("org_id", args.orgId)
+    .eq("employee_id", args.employeeId)
+    .eq("status", "approved")
+    .select("reimbursable_amount");
+  if (linkErr) throw new Error(`Could not mark claims reimbursed: ${linkErr.message}`);
+
+  // The parser checked this against a read taken before the batch started;
+  // re-check against what we actually closed, in case a claim was approved or
+  // rejected mid-import. Throwing marks the row failed and surfaces it.
+  const total = (closed ?? []).reduce(
+    (s, c) => s + Number((c as { reimbursable_amount: number }).reimbursable_amount),
+    0
+  );
+  if (Math.round(total * 100) !== Math.round(args.expected * 100)) {
+    throw new Error(
+      `Expense claims changed during the import (closed ${total.toFixed(2)}, ` +
+        `payslip says ${args.expected.toFixed(2)}). Download a fresh template and retry.`
+    );
+  }
 }
 
 // Parse the payroll CSV, generate one payslip PDF per valid row, store it, and
@@ -237,13 +321,15 @@ export async function importPayslips(
   const monthKey = monthStart(monthRaw.length === 7 ? `${monthRaw}-01` : monthRaw);
 
   // Authoritative server-side re-parse — never trust the client preview.
-  const [employees, statusRows, bankMap, org, text] = await Promise.all([
-    listEmployeesForPayslipImport(),
-    listPayslipStatusForMonth(monthKey),
-    listBankDetailsMap(),
-    getOrg(approver.org_id),
-    file.text(),
-  ]);
+  const [employees, statusRows, bankMap, org, expectedReimbursement, text] =
+    await Promise.all([
+      listEmployeesForPayslipImport(),
+      listPayslipStatusForMonth(monthKey),
+      listBankDetailsMap(),
+      getOrg(approver.org_id),
+      reimbursementExpectedForMonth(monthKey),
+      file.text(),
+    ]);
   const existingIds = new Set(
     statusRows.filter((r) => r.payslip !== null).map((r) => r.employeeId)
   );
@@ -254,6 +340,8 @@ export async function importPayslips(
       name: e.name,
       employee_code: e.employee_code,
       has_bank_details: bankMap.has(e.id),
+      is_service_account: e.is_service_account,
+      expected_reimbursement: expectedReimbursement.get(e.id) ?? 0,
     })),
     existingIds,
     daysInMonthOf(monthKey)
@@ -294,7 +382,7 @@ export async function importPayslips(
         });
       if (upErr) throw new Error(upErr.message);
 
-      const { error: rowErr } = await supabase.from("payslips").upsert(
+      const { data: slip, error: rowErr } = await supabase.from("payslips").upsert(
         {
           org_id: approver.org_id,
           employee_id: employee.id,
@@ -316,12 +404,23 @@ export async function importPayslips(
             deductions: row.deductions.filter((d) => d.amount > 0),
             gross: row.gross,
             total_deductions: row.totalDeductions,
+            reimbursement: row.reimbursement,
             net: row.net,
           },
         },
         { onConflict: "employee_id,period_month" }
-      );
+      )
+        .select("id")
+        .single();
       if (rowErr) throw new Error(rowErr.message);
+
+      await linkReimbursedClaims({
+        payslipId: (slip as { id: string }).id,
+        employeeId: employee.id,
+        orgId: approver.org_id,
+        approverId: approver.id,
+        expected: row.reimbursement,
+      });
 
       await supabase.from("notifications").insert({
         employee_id: employee.id,

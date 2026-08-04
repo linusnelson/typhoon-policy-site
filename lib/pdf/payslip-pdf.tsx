@@ -56,6 +56,26 @@ const s = StyleSheet.create({
     padding: 12,
     backgroundColor: PDF.gray100,
   },
+  // Reimbursement sits between the earnings/deductions tables and the net box:
+  // paid with the salary, but not salary — see PAYSLIP_REIMBURSEMENT_LABEL.
+  reimburseRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: PDF.gray200,
+    borderRadius: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+  },
+  reimburseLabel: { flex: 1, fontSize: 8.5, color: PDF.ink },
+  reimburseNote: { fontSize: 7.5, color: PDF.gray500, marginTop: 2 },
+  reimburseAmount: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: PDF.ink,
+    textAlign: "right",
+  },
   netRow: { flexDirection: "row", alignItems: "baseline" },
   netLabel: { fontSize: 10, fontFamily: "Helvetica-Bold", color: PDF.ink },
   netValue: { fontSize: 12, fontFamily: "Helvetica-Bold", color: PDF.brand, marginLeft: 8 },
@@ -101,6 +121,9 @@ export interface PayslipPdfData {
   deductions: PayslipPdfItem[];
   totalEarnings: string;
   totalDeductions: string;
+  // Expense reimbursement paid with this salary. "" = none, row is omitted.
+  // Excluded from totalEarnings by design; included in netPay.
+  reimbursement: string;
   netPay: string;
   netPayWords: string; // "Rupees … Only"
 }
@@ -193,6 +216,19 @@ export function PayslipPdf(d: PayslipPdfData) {
             total={d.totalDeductions}
           />
         </View>
+
+        {d.reimbursement !== "" && (
+          <View style={s.reimburseRow}>
+            <View style={s.reimburseLabel}>
+              <Text>Expense Reimbursement</Text>
+              <Text style={s.reimburseNote}>
+                Repayment of approved expense claims — not part of gross
+                earnings.
+              </Text>
+            </View>
+            <Text style={s.reimburseAmount}>{d.reimbursement}</Text>
+          </View>
+        )}
 
         <View style={s.netBox}>
           <View style={s.netRow}>

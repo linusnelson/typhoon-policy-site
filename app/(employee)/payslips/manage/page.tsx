@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation";
 import { requireExpenseApproverView } from "@/lib/auth";
 import { moduleEnabled } from "@/lib/data/org";
-import { listPayslipStatusForMonth } from "@/lib/data/payslips";
+import {
+  listEmployeesForPayslipImport,
+  listPayslipStatusForMonth,
+} from "@/lib/data/payslips";
 import { listBankDetailsMap } from "@/lib/data/bank-details";
-import { signPayslipUrl } from "@/lib/supabase/storage";
+import { reimbursementExpectedForMonth } from "@/lib/data/expenses";
 import { deletePayslip } from "@/actions/payslips";
 import { Badge, Banner, Button, Card } from "@/components/ui";
 import { MonthPicker } from "@/components/admin/advances/MonthPicker";
@@ -32,21 +35,22 @@ export default async function ManagePayslipsPage({
     ? monthStart(params.month.length === 7 ? `${params.month}-01` : params.month)
     : monthStart(istToday());
 
-  const [rows, bankMap] = await Promise.all([
-    listPayslipStatusForMonth(monthKey),
-    listBankDetailsMap(),
-  ]);
+  const [rows, bankMap, importEmployees, expectedReimbursement] =
+    await Promise.all([
+      listPayslipStatusForMonth(monthKey),
+      listBankDetailsMap(),
+      // Same list the server action re-parses against — includes service
+      // accounts (flagged) so the preview and the import agree on the error.
+      listEmployeesForPayslipImport(),
+      reimbursementExpectedForMonth(monthKey),
+    ]);
   const uploaded = rows.filter((r) => r.payslip !== null);
   const missingBank = rows.filter((r) => !bankMap.has(r.employeeId));
 
-  // Sign all uploaded slips in parallel for the Download links.
-  const signedByEmployee = new Map<string, string>();
-  await Promise.all(
-    uploaded.map(async (r) => {
-      const url = await signPayslipUrl(r.payslip!.file_path);
-      if (url) signedByEmployee.set(r.employeeId, url);
-    })
-  );
+  // Download links point at /payslips/[id]/download, which re-authorises per
+  // request. Previously this pre-signed EVERY employee's payslip on render —
+  // one page view minted an hour-long bearer token for the whole company's
+  // payslips, clicked or not.
 
   return (
     <div className="space-y-6">
@@ -86,11 +90,13 @@ export default async function ManagePayslipsPage({
         </p>
         <PayslipImportForm
           monthKey={monthKey}
-          employees={rows.map((r) => ({
-            id: r.employeeId,
-            name: r.employeeName,
-            employee_code: r.employeeCode,
-            has_bank_details: bankMap.has(r.employeeId),
+          employees={importEmployees.map((e) => ({
+            id: e.id,
+            name: e.name,
+            employee_code: e.employee_code,
+            has_bank_details: bankMap.has(e.id),
+            is_service_account: e.is_service_account,
+            expected_reimbursement: expectedReimbursement.get(e.id) ?? 0,
           }))}
           existingEmployeeIds={uploaded.map((r) => r.employeeId)}
         />
@@ -113,7 +119,6 @@ export default async function ManagePayslipsPage({
               </thead>
               <tbody>
                 {rows.map((r) => {
-                  const url = signedByEmployee.get(r.employeeId);
                   return (
                     <tr key={r.employeeId} className="border-b border-gray-50">
                       <td className="py-2 pr-4">
@@ -137,13 +142,15 @@ export default async function ManagePayslipsPage({
                       <td className="py-2">
                         {r.payslip ? (
                           <span className="flex items-center gap-1">
-                            {url && (
-                              <a href={url} target="_blank" rel="noreferrer">
-                                <Button variant="ghost" type="button">
-                                  Download
-                                </Button>
-                              </a>
-                            )}
+                            <a
+                              href={`/payslips/${r.payslip.id}/download`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              <Button variant="ghost" type="button">
+                                Download
+                              </Button>
+                            </a>
                             <form action={deletePayslip}>
                               <input type="hidden" name="id" value={r.payslip.id} />
                               <Button variant="ghost" type="submit">

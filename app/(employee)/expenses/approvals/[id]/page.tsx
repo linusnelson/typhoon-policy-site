@@ -4,7 +4,7 @@ import { ArrowLeft, FileText } from "lucide-react";
 import { requireExpenseApproverView } from "@/lib/auth";
 import { moduleEnabled } from "@/lib/data/org";
 import { getExpense, getExpensePolicy } from "@/lib/data/expenses";
-import { signExpenseBillUrl } from "@/lib/supabase/storage";
+import { expenseBillUrl } from "@/lib/supabase/storage";
 import { Badge, Banner, Card } from "@/components/ui";
 import { ExpenseStatusBadge } from "@/components/employee/ExpenseStatusBadge";
 import { ExpenseReviewForms } from "@/components/admin/expenses/ExpenseReviewForms";
@@ -26,9 +26,7 @@ export default async function ExpenseDetailPage({
   const [claim, policy] = await Promise.all([getExpense(id), getExpensePolicy()]);
   if (!claim) notFound();
 
-  const signedUrls = await Promise.all(
-    claim.attachments.map((a) => signExpenseBillUrl(a.file_path))
-  );
+  const signedUrls = claim.attachments.map((a) => expenseBillUrl(a.file_path));
 
   const isOwn = claim.employee_id === viewer.id;
   const canActOnOwn = viewer.role === "admin"; // RLS blocks non-admin self-review

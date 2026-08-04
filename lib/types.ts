@@ -12,6 +12,10 @@ export interface Employee {
   status: EmployeeStatus;
   // Accounts user: may approve/reject/reimburse expense claims (any role).
   is_expense_approver: boolean;
+  // Login-only account, not a person: no payslip, no punch reminders, no
+  // policy signing, absent from the org chart, headcount and reports.
+  // Authorization is still entirely role + RLS — this only says "not staff".
+  is_service_account: boolean;
 }
 
 // ── ClockBays entities (migrated from the Flutter freezed models) ────────────

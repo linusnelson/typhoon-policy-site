@@ -22,6 +22,11 @@ function str(formData: FormData, key: string): string | null {
   return t.length ? t : null;
 }
 
+function bool(formData: FormData, key: string): boolean {
+  const v = formData.get(key);
+  return v === "true" || v === "on" || v === "1";
+}
+
 // Directly provisions a login account: creates the auth user (service-role)
 // then inserts the employee row, scoped to the admin's org.
 export async function createEmployeeDirect(
@@ -93,6 +98,7 @@ export async function createEmployeeDirect(
     emergency_contact_name: str(formData, "emergency_contact_name"),
     emergency_contact_phone: str(formData, "emergency_contact_phone"),
     role,
+    is_service_account: bool(formData, "is_service_account"),
     status: "active",
     approved_at: new Date().toISOString(),
   });
@@ -253,6 +259,7 @@ export async function updateEmployee(
       emergency_contact_name: str(formData, "emergency_contact_name"),
       emergency_contact_phone: str(formData, "emergency_contact_phone"),
       role,
+      is_service_account: bool(formData, "is_service_account"),
     })
     .eq("id", id);
 

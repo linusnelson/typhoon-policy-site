@@ -21,6 +21,13 @@ export default async function VersionsPage({
   const { id } = await params;
   const employee = (await getCurrentEmployee())!;
 
+  // Admin-only: policy_versions RLS returns only `published` rows to
+  // non-admins, and publishing archives the previous version — so an employee
+  // reaching this page would see a "history" of exactly one entry. Rather than
+  // show that, the page doesn't exist for them. The link is hidden on the
+  // document page too; this is the server-side half.
+  if (employee.role !== "admin") notFound();
+
   const document = await getDocument(id);
   if (!document) notFound();
 
@@ -75,12 +82,21 @@ export default async function VersionsPage({
                     </p>
                   )}
                 </div>
-                <div className="shrink-0">
+                <div className="flex shrink-0 flex-col items-end gap-2">
                   {sig ? (
                     <Badge tone="success">Signed</Badge>
                   ) : (
                     <Badge tone="warning">Not signed</Badge>
                   )}
+                  {/* This page is admin-only (see the guard above), so the
+                      reader lives under /admin. Without it the list names
+                      versions it gives you no way to read. */}
+                  <Link
+                    href={`/admin/policies/${id}/versions/${v.id}`}
+                    className="text-xs font-semibold text-brand hover:underline"
+                  >
+                    Read this version →
+                  </Link>
                 </div>
               </div>
               {sig && (

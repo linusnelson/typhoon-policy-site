@@ -1,5 +1,4 @@
 import { getCurrentEmployee, getDocumentsWithStatus } from "@/lib/policies";
-import { isServiceAccount } from "@/lib/config";
 import { getMonthAttendance } from "@/lib/data/employee-attendance";
 import { getMyLeaveBalances } from "@/lib/data/employee-leave";
 import { getMyEvents } from "@/lib/data/employee-events";
@@ -21,7 +20,7 @@ export default async function DashboardPage() {
   const employee = (await getCurrentEmployee())!; // layout guarantees presence
   const isAdmin = employee.role === "admin";
   const isManager = employee.role === "manager";
-  const hideSelfServe = isAdmin || isServiceAccount(employee.email);
+  const hideSelfServe = isAdmin || employee.is_service_account;
 
   const today = istToday();
   const weekEnd = new Date(`${today}T00:00:00Z`);

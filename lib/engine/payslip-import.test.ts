@@ -30,6 +30,13 @@ test("parseCsv: drops blank lines", () => {
   ]);
 });
 
+test("parseCsv: strips the UTF-8 BOM our own template writes", () => {
+  assert.deepEqual(parseCsv("﻿employee_code,name\nTES001,Asha"), [
+    ["employee_code", "name"],
+    ["TES001", "Asha"],
+  ]);
+});
+
 test("csvCell: quotes only when needed", () => {
   assert.equal(csvCell("plain"), "plain");
   assert.equal(csvCell('Rao, "Asha"'), '"Rao, ""Asha"""');
@@ -133,6 +140,124 @@ test("header errors: unknown column, missing fixed, no earnings, dup label", () 
 
   const dup = parsePayslipCsv("employee_code,name,lop,E:BASIC,e:basic\n", EMPLOYEES, new Set(), DAYS);
   assert.ok(dup.headerErrors.some((e) => e.includes('Duplicate earning column "BASIC"')));
+});
+
+// ── Reimbursement: not gross, straight to net ────────────────────────────────
+
+const REIMB_HEADER = "employee_code,name,lop,E:BASIC,E:REIMBURSEMENT,D:PROF TAX";
+
+function reimbEmployees(expected?: number): PayslipEmployeeRef[] {
+  return [
+    {
+      id: "id-1",
+      name: "Asha Rao",
+      employee_code: "TES001",
+      has_bank_details: true,
+      ...(expected === undefined ? {} : { expected_reimbursement: expected }),
+    },
+  ];
+}
+
+test("reimbursement is excluded from gross and added to net", () => {
+  const csv = `${REIMB_HEADER}\nTES001,Asha Rao,0,50000,2500,208`;
+  const { rows } = parsePayslipCsv(csv, reimbEmployees(2500), new Set(), DAYS);
+  assert.deepEqual(rows[0].errors, []);
+  assert.equal(rows[0].gross, 50000); // NOT 52500
+  assert.equal(rows[0].reimbursement, 2500);
+  assert.equal(rows[0].totalDeductions, 208);
+  assert.equal(rows[0].net, 52292); // 50000 - 208 + 2500
+  // The reimbursement column must not leak into the earnings table.
+  assert.deepEqual(
+    rows[0].earnings.map((e) => e.label),
+    ["BASIC"]
+  );
+});
+
+test("reimbursement label matching is case- and space-insensitive", () => {
+  const csv = `employee_code,name,lop,E:BASIC,e: reimbursement \nTES001,Asha Rao,0,50000,900`;
+  const { rows } = parsePayslipCsv(csv, reimbEmployees(900), new Set(), DAYS);
+  assert.equal(rows[0].gross, 50000);
+  assert.equal(rows[0].reimbursement, 900);
+});
+
+test("reimbursement mismatch blocks the row", () => {
+  const csv = `${REIMB_HEADER}\nTES001,Asha Rao,0,50000,3000,208`;
+  const { rows } = parsePayslipCsv(csv, reimbEmployees(5000), new Set(), DAYS);
+  assert.ok(
+    rows[0].errors.some(
+      (e) => e.includes("Rs. 3,000.00") && e.includes("Rs. 5,000.00")
+    ),
+    `expected both figures in: ${rows[0].errors.join(" | ")}`
+  );
+});
+
+test("reimbursement for an employee with no open claims is blocked", () => {
+  const csv = `${REIMB_HEADER}\nTES001,Asha Rao,0,50000,1500,208`;
+  const { rows } = parsePayslipCsv(csv, reimbEmployees(0), new Set(), DAYS);
+  assert.ok(rows[0].errors.some((e) => e.includes("no claims awaiting")));
+});
+
+test("no expected total supplied = no reimbursement check", () => {
+  const csv = `${REIMB_HEADER}\nTES001,Asha Rao,0,50000,3000,208`;
+  const { rows } = parsePayslipCsv(csv, reimbEmployees(), new Set(), DAYS);
+  assert.deepEqual(rows[0].errors, []);
+  assert.equal(rows[0].net, 52792);
+});
+
+test("float drift between claim sum and CSV does not block", () => {
+  const csv = `${REIMB_HEADER}\nTES001,Asha Rao,0,50000,850.50,0`;
+  // 283.5 + 283.5 + 283.5 sums to 850.5000000000001 in float.
+  const drifting = 283.5 * 3;
+  const { rows } = parsePayslipCsv(csv, reimbEmployees(drifting), new Set(), DAYS);
+  assert.deepEqual(rows[0].errors, []);
+});
+
+test("reimbursement cannot mask a negative net salary", () => {
+  // Salary 5,000 − deductions 9,000 = −4,000; a 10,000 reimbursement would
+  // make net look healthy. The row must still fail.
+  const csv = `${REIMB_HEADER}\nTES001,Asha Rao,0,5000,10000,9000`;
+  const { rows } = parsePayslipCsv(csv, reimbEmployees(10000), new Set(), DAYS);
+  assert.ok(rows[0].net > 0);
+  assert.ok(rows[0].errors.some((e) => e.includes("negative net")));
+});
+
+test("service account row is rejected with a specific reason", () => {
+  const withService: PayslipEmployeeRef[] = [
+    ...EMPLOYEES,
+    {
+      id: "id-svc",
+      name: "System Admin",
+      employee_code: "ADM001",
+      has_bank_details: false,
+      is_service_account: true,
+    },
+  ];
+  const csv = `employee_code,name,lop,E:BASIC\nADM001,System Admin,0,50000`;
+  const { rows } = parsePayslipCsv(csv, withService, new Set(), DAYS);
+  assert.equal(rows[0].employeeId, null); // no payslip generated
+  assert.ok(rows[0].errors.some((e) => e.includes("is a service account")));
+  assert.ok(!rows[0].errors.some((e) => e.includes("No active employee")));
+});
+
+test("blank header columns are ignored, not errors", () => {
+  // Excel writes stray empty columns ("…,,,D:INSURANCE") from cleared cells.
+  const csv =
+    "employee_code,name,lop,E:BASIC,,,D:INSURANCE\nTES001,Asha Rao,0,95000,,,2401";
+  const { headerErrors, rows } = parsePayslipCsv(csv, EMPLOYEES, new Set(), DAYS);
+  assert.deepEqual(headerErrors, []);
+  assert.deepEqual(rows[0].earnings, [{ label: "BASIC", amount: 95000 }]);
+  assert.deepEqual(rows[0].deductions, [{ label: "INSURANCE", amount: 2401 }]);
+  assert.equal(rows[0].net, 92599);
+  assert.deepEqual(rows[0].warnings, []);
+});
+
+test("a value under a blank header warns but still imports", () => {
+  const csv = "employee_code,name,lop,E:BASIC,\nTES001,Asha Rao,0,95000,4200";
+  const { headerErrors, rows } = parsePayslipCsv(csv, EMPLOYEES, new Set(), DAYS);
+  assert.deepEqual(headerErrors, []);
+  assert.deepEqual(rows[0].errors, []);
+  assert.equal(rows[0].gross, 95000); // the stray 4200 is not counted
+  assert.ok(rows[0].warnings.some((w) => w.includes("no heading")));
 });
 
 test("same label allowed on both sides", () => {

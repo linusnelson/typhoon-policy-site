@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Download, ListChecks } from "lucide-react";
+import { Download, FileText, ListChecks } from "lucide-react";
 import { requireExpenseApproverView } from "@/lib/auth";
 import { moduleEnabled } from "@/lib/data/org";
 import { listExpenses, groupExpensesByVisit } from "@/lib/data/expenses";
@@ -93,6 +93,23 @@ export default async function ExpenseApprovalsPage({
       </div>
 
       <TabNav tabs={TABS} />
+
+      {/* Payout sheet: the whole unpaid queue, not the report month above. */}
+      {tab === "approved" && groups.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+          <p className="text-xs text-gray-500">
+            One line per employee with the total owed — for whoever makes the
+            transfer. Covers every approved claim awaiting payment, whatever
+            month it falls in. Generating it doesn&apos;t mark anything
+            reimbursed.
+          </p>
+          <a href="/expenses/approvals/payout">
+            <Button variant="primary" type="button">
+              <FileText className="h-4 w-4" /> Payout sheet
+            </Button>
+          </a>
+        </div>
+      )}
 
       {groups.length === 0 ? (
         <Card className="p-10 text-center text-sm text-gray-400">

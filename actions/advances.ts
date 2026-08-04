@@ -112,7 +112,7 @@ export async function applyAdvance(
 
   // Gate: the Loans & Advances policy must be signed (current published
   // version) before an employee may borrow.
-  const signStatus = await getLoanPolicySignStatus(employee.id, employee.email);
+  const signStatus = await getLoanPolicySignStatus(employee.id, employee.is_service_account);
   if (signStatus.required && !signStatus.signed) {
     return {
       ok: false,

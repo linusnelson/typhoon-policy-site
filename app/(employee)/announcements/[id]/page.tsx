@@ -4,7 +4,7 @@ import { ArrowLeft, Download, Pin } from "lucide-react";
 import { requireEmployee } from "@/lib/auth";
 import { moduleEnabled } from "@/lib/data/org";
 import { getAnnouncement } from "@/lib/data/announcements";
-import { signAnnouncementUrl } from "@/lib/supabase/storage";
+import { announcementUrl } from "@/lib/supabase/storage";
 import { PolicyMarkdown } from "@/components/PolicyMarkdown";
 import { MarkReadOnView } from "@/components/employee/MarkReadOnView";
 import { Button, Card } from "@/components/ui";
@@ -22,7 +22,7 @@ export default async function AnnouncementDetailPage({
   const announcement = await getAnnouncement(id);
   if (!announcement) notFound(); // RLS: expired/foreign rows are invisible
 
-  const attachmentUrl = await signAnnouncementUrl(announcement.attachment_path);
+  const attachmentUrl = announcementUrl(announcement.attachment_path);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">

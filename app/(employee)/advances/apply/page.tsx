@@ -13,7 +13,7 @@ export default async function ApplyAdvancePage() {
   if (!(await moduleEnabled(me.org_id, "advances"))) notFound();
 
   // Gate: the Loans & Advances policy must be signed before applying.
-  const signStatus = await getLoanPolicySignStatus(me.id, me.email);
+  const signStatus = await getLoanPolicySignStatus(me.id, me.is_service_account);
   if (signStatus.required && !signStatus.signed) {
     return (
       <div className="mx-auto max-w-xl space-y-6">

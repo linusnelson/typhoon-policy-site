@@ -24,7 +24,7 @@ export default async function AdvancesPage() {
   const [advances, context, signStatus] = await Promise.all([
     getMyAdvances(me.id),
     getAdvanceContext(me.id),
-    getLoanPolicySignStatus(me.id, me.email),
+    getLoanPolicySignStatus(me.id, me.is_service_account),
   ]);
   const policySigned = !signStatus.required || signStatus.signed;
 

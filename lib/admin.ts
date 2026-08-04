@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { isServiceAccount } from "@/lib/config";
 import type { Employee, PolicyDocument, PolicyVersion } from "@/lib/types";
 
 export interface SignerRow {
@@ -34,17 +33,17 @@ export async function getComplianceForDocument(
     currentVersion = (data as PolicyVersion | null) ?? null;
   }
 
+  // Service accounts are not people — excluded from the required-signer set so
+  // compliance counts only real employees.
   const { data: employees } = await supabase
     .from("employees")
     .select("id, name, email")
     .eq("status", "active")
+    .eq("is_service_account", false)
     .order("name", { ascending: true });
 
-  // Service mailboxes (e.g. admin@) are not people — exclude from the
-  // required-signer set so compliance counts only real employees.
-  const activeEmployees = (
-    (employees as Pick<Employee, "id" | "name" | "email">[]) ?? []
-  ).filter((e) => !isServiceAccount(e.email));
+  const activeEmployees =
+    (employees as Pick<Employee, "id" | "name" | "email">[]) ?? [];
 
   const signedByEmployee = new Map<
     string,

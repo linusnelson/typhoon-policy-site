@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { requireEmployee } from "@/lib/auth";
 import { moduleEnabled } from "@/lib/data/org";
 import { getExpense, getExpensePolicy, listMyVisitTargets } from "@/lib/data/expenses";
-import { signExpenseBillUrl } from "@/lib/supabase/storage";
+import { expenseBillUrl } from "@/lib/supabase/storage";
 import { defaultExpensePolicy } from "@/lib/engine/expense";
 import { istToday } from "@/lib/ist";
 import { Banner, Card } from "@/components/ui";
@@ -28,10 +28,11 @@ export default async function EditExpensePage({
   const editable = ["draft", "pending", "rejected"].includes(claim.status);
   const policy =
     (await getExpensePolicy()) ?? defaultExpensePolicy(employee.org_id);
-  const [targets, attachmentUrls] = await Promise.all([
-    listMyVisitTargets(employee.id, policy.submission_window_days),
-    Promise.all(claim.attachments.map((a) => signExpenseBillUrl(a.file_path))),
-  ]);
+  const attachmentUrls = claim.attachments.map((a) => expenseBillUrl(a.file_path));
+  const targets = await listMyVisitTargets(
+    employee.id,
+    policy.submission_window_days
+  );
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">

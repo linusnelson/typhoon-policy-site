@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { formatIstTime, istDateKey, istDayBoundsUtc } from "@/lib/ist";
-import { signSelfieUrls } from "@/lib/supabase/storage";
+import { selfieUrls } from "@/lib/supabase/storage";
 
 // Admin-only data for the employee detail page (Security + Timeline tabs).
 // RLS grants admins org-wide reads, so the user-session client is enough.
@@ -293,7 +293,7 @@ export async function getLocationTimeline(
   }
 
   if (visitSelfieEvents.length > 0) {
-    const signed = await signSelfieUrls(visitSelfieEvents.map((v) => v.path));
+    const signed = selfieUrls(visitSelfieEvents.map((v) => v.path));
     for (const { event, path } of visitSelfieEvents) {
       event.selfieUrl = signed.get(path) ?? null;
     }

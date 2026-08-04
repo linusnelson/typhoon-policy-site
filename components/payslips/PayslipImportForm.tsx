@@ -166,6 +166,9 @@ export function PayslipImportForm({
                   <th className="py-2 pr-4">Code</th>
                   <th className="py-2 pr-4 text-right">Earnings</th>
                   <th className="py-2 pr-4 text-right">Deductions</th>
+                  {/* Reimbursement is not part of Earnings — without its own
+                      column, Net Pay would look like a maths error. */}
+                  <th className="py-2 pr-4 text-right">Reimb.</th>
                   <th className="py-2 pr-4 text-right">Net Pay</th>
                   <th className="py-2">Status</th>
                 </tr>
@@ -180,6 +183,9 @@ export function PayslipImportForm({
                     <td className="py-2 pr-4 font-mono text-xs text-gray-400">{r.code}</td>
                     <td className="py-2 pr-4 text-right">{formatINR(r.gross)}</td>
                     <td className="py-2 pr-4 text-right">{formatINR(r.totalDeductions)}</td>
+                    <td className="py-2 pr-4 text-right text-gray-500">
+                      {r.reimbursement > 0 ? formatINR(r.reimbursement) : "—"}
+                    </td>
                     <td className="py-2 pr-4 text-right font-semibold text-ink">
                       {formatINR(r.net)}
                     </td>

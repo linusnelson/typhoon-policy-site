@@ -81,7 +81,8 @@ export async function getMuster(
     .from("employees")
     .select("id, employee_code, name, department_id, location_id, date_of_joining")
     .eq("status", "active")
-    .neq("role", "admin");
+    .neq("role", "admin")
+    .eq("is_service_account", false);
   if (f.locationId) empQuery = empQuery.eq("location_id", f.locationId);
   if (f.departmentId) empQuery = empQuery.eq("department_id", f.departmentId);
   if (f.employeeIds) empQuery = empQuery.in("id", f.employeeIds);

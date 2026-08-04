@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { EmployeeRow } from "@/lib/data/employee-model";
-import { signSelfieUrls } from "@/lib/supabase/storage";
+import { selfieUrls } from "@/lib/supabase/storage";
 
 // Re-export the client-safe model so server callers have one import site.
 export {
@@ -51,7 +51,7 @@ export async function listEmployees(): Promise<EmployeeRow[]> {
 
   // photo_url is a bare path in the private `selfies` bucket; replace it with a
   // signed display URL (or null) so the avatar renders instead of 404ing.
-  const photos = await signSelfieUrls(rows.map((r) => r.photo_url));
+  const photos = selfieUrls(rows.map((r) => r.photo_url));
   for (const r of rows) {
     r.photo_url = r.photo_url ? photos.get(r.photo_url) ?? null : null;
   }
@@ -72,6 +72,20 @@ export async function listEmployeeOptions(): Promise<EmployeeOption[]> {
     .select("id, name, role")
     .order("name");
   return (data as EmployeeOption[]) ?? [];
+}
+
+// Login-only accounts (employees.is_service_account), for the read-only list
+// on admin Settings. The flag itself is set per-employee on the employee form.
+export async function listServiceAccounts(): Promise<
+  Array<{ name: string; email: string }>
+> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("employees")
+    .select("name, email")
+    .eq("is_service_account", true)
+    .order("email");
+  return (data as Array<{ name: string; email: string }> | null) ?? [];
 }
 
 export async function getEmployee(id: string): Promise<EmployeeRow | null> {

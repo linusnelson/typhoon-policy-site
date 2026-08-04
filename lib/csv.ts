@@ -4,6 +4,11 @@
 // preview and re-run authoritatively in the server action.
 
 export function parseCsv(text: string): string[][] {
+  // Strip the UTF-8 BOM. Our own template route writes one (so Excel opens the
+  // file correctly), and Excel's "CSV UTF-8" save adds one — without this the
+  // first header reads "﻿employee_code" and the import rejects the file.
+  if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";

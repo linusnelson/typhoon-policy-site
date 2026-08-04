@@ -263,7 +263,8 @@ export { Bell };
 // `module` key are additionally gated on the org's module flags (Settings →
 // Modules) — note nav hiding is cosmetic; module pages also 404 server-side.
 // `hideSelfServe` drops the personal "My …" items — true for admins and service
-// accounts (see isServiceAccount), who have no personal attendance/leave. Kept
+// accounts (employees.is_service_account), who have no personal
+// attendance/leave. Kept
 // as an explicit flag (not derived from role) so title lookups can pass false.
 export function navForRole(
   role: EmployeeRole,

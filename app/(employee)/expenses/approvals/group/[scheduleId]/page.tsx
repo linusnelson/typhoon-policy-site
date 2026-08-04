@@ -8,7 +8,7 @@ import {
   getScheduleHeader,
   listScheduleGroupClaims,
 } from "@/lib/data/expenses";
-import { signExpenseBillUrl } from "@/lib/supabase/storage";
+import { expenseBillUrl } from "@/lib/supabase/storage";
 import {
   GroupReviewWizard,
   type WizardClaim,
@@ -52,13 +52,11 @@ export default async function GroupReviewPage({
           Math.max(0, policy.food_daily_limit - otherTotal)
         );
       }
-      const bills = await Promise.all(
-        c.attachments.map(async (a) => ({
-          fileName: a.file_name,
-          mimeType: a.mime_type,
-          url: await signExpenseBillUrl(a.file_path),
-        }))
-      );
+      const bills = c.attachments.map((a) => ({
+        fileName: a.file_name,
+        mimeType: a.mime_type,
+        url: expenseBillUrl(a.file_path),
+      }));
       return {
         id: c.id,
         category: c.category,

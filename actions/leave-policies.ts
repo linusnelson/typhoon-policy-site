@@ -172,7 +172,8 @@ async function ensureBalancesExist(
     .select("id")
     .eq("org_id", opts.orgId)
     .eq("status", "active")
-    .neq("role", "admin");
+    .neq("role", "admin")
+    .eq("is_service_account", false);
   const allEmpIds = new Set(((empRows as { id: string }[]) ?? []).map((r) => r.id));
   if (allEmpIds.size === 0) return;
 
@@ -240,7 +241,8 @@ async function recalculateBalancesFromDate(
     .select("id")
     .eq("org_id", opts.orgId)
     .eq("status", "active")
-    .neq("role", "admin");
+    .neq("role", "admin")
+    .eq("is_service_account", false);
   const allEmpIds = new Set(((empRows as { id: string }[]) ?? []).map((r) => r.id));
   if (allEmpIds.size === 0) return;
 
