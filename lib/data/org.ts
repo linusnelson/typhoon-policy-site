@@ -15,6 +15,12 @@ import {
 // invalidated immediately. The revalidate TTL below is only a safety net.
 export const ORG_SETTINGS_TAG = "org-settings";
 
+// Exit settlement for a relieved employee's remaining leave balance:
+// 'lapse' (default) — the daily cron zeroes it (audited adjustment), no F&F,
+// no encashment; 'fnf' — the balance is left frozen on the employee's record
+// as the figure for final settlement.
+export type ExitLeaveMode = "lapse" | "fnf";
+
 export interface OrgSettings {
   id: string;
   name: string;
@@ -22,6 +28,7 @@ export interface OrgSettings {
   modules: OrgModules; // settings.modules (web-owned namespace)
   companyAddress: string; // settings.company_address (web-owned) — payslip header
   reminders: RemindersConfig; // settings.reminders (web-owned) — SQL dispatcher config
+  exitLeaveMode: ExitLeaveMode; // settings.exit_leave_mode (web-owned) — read by the SQL cron
 }
 
 // Parse the web-owned settings.modules namespace out of the shared JSONB.
@@ -124,6 +131,7 @@ const fetchOrg = unstable_cache(
       companyAddress:
         typeof settings.company_address === "string" ? settings.company_address : "",
       reminders: remindersFromSettings(data.settings),
+      exitLeaveMode: settings.exit_leave_mode === "fnf" ? "fnf" : "lapse",
     };
   },
   ["org-settings"],

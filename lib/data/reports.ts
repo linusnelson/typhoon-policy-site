@@ -73,6 +73,7 @@ type EmpRow = {
   department_id: string | null;
   location_id: string | null;
   date_of_joining: string | null;
+  relieving_date: string | null;
 };
 
 interface Filters {
@@ -128,12 +129,15 @@ function buildEmployeeQuery(
   supabase: Awaited<ReturnType<typeof createClient>>,
   f: Filters
 ) {
+  // Active staff plus leavers (relieving_date set) so historical reports keep
+  // an ex-employee's rows after the daily cron flips them inactive. Each
+  // report clamps or filters rows to its own period.
   let q = supabase
     .from("employees")
     .select(
-      "id, employee_code, name, department_id, location_id, date_of_joining"
+      "id, employee_code, name, department_id, location_id, date_of_joining, relieving_date"
     )
-    .eq("status", "active")
+    .or("status.eq.active,relieving_date.not.is.null")
     .neq("role", "admin")
     .eq("is_service_account", false);
   if (f.locationId) q = q.eq("location_id", f.locationId);
@@ -271,7 +275,11 @@ export async function dailyAttendance(
   }
 
   const rows: DailyAttendanceRow[] = ((emps as EmpRow[] | null) ?? [])
-    .filter((e) => !e.date_of_joining || e.date_of_joining <= dateKey)
+    .filter(
+      (e) =>
+        (!e.date_of_joining || e.date_of_joining <= dateKey) &&
+        (!e.relieving_date || dateKey <= e.relieving_date)
+    )
     .map((emp) => {
       const eid = emp.id;
       const pol = policyFor(emp.department_id);
@@ -440,6 +448,8 @@ async function periodSummary(
   }
 
   return ((emps as EmpRow[] | null) ?? [])
+    // Leavers who exited before the period contribute nothing — drop the row.
+    .filter((e) => !e.relieving_date || e.relieving_date >= fromKey)
     .map((emp) => {
       const eid = emp.id;
       const pol = policyFor(emp.department_id);
@@ -507,7 +517,12 @@ async function periodSummary(
 
       const leaveDays = leaveDaysMap.get(eid) ?? 0;
       const effStart = emp.date_of_joining && emp.date_of_joining > fromKey ? emp.date_of_joining : fromKey;
-      const empWorkingDays = workingDaysBetween(effStart, workingDaysEnd);
+      const effEnd =
+        emp.relieving_date && emp.relieving_date < workingDaysEnd
+          ? emp.relieving_date
+          : workingDaysEnd;
+      const empWorkingDays =
+        effEnd < effStart ? 0 : workingDaysBetween(effStart, effEnd);
       const absentDays = Math.min(
         Math.max(empWorkingDays - presentDays - leaveDays, 0),
         empWorkingDays
@@ -652,7 +667,8 @@ export async function eventAttendanceReport(
       supabase
         .from("employees")
         .select("id, employee_code, name, department_id, location_id")
-        .eq("status", "active")
+        // Include leavers so past events keep their attendee rows.
+        .or("status.eq.active,relieving_date.not.is.null")
         .neq("role", "admin")
         .eq("is_service_account", false),
     ]);
@@ -796,7 +812,11 @@ export async function dailyRange(
   }
 
   const rows = ((emps as EmpRow[] | null) ?? [])
-    .filter((e) => !e.date_of_joining || e.date_of_joining <= toKey)
+    .filter(
+      (e) =>
+        (!e.date_of_joining || e.date_of_joining <= toKey) &&
+        (!e.relieving_date || e.relieving_date >= fromKey)
+    )
     .map((emp) => {
       const eid = emp.id;
       const pol = policyFor(emp.department_id);
@@ -805,6 +825,15 @@ export async function dailyRange(
       const byDate: Record<string, DayCell> = {};
 
       for (const dateKey of dates) {
+        // Days outside the employment window (before joining / after the
+        // relieving date) are not absences — the person wasn't employed.
+        if (
+          (emp.date_of_joining && dateKey < emp.date_of_joining) ||
+          (emp.relieving_date && dateKey > emp.relieving_date)
+        ) {
+          byDate[dateKey] = { status: "Not Employed", punchIn: "", punchOut: "", workedHours: 0 };
+          continue;
+        }
         if (onLeaveByDate.get(dateKey)?.has(eid)) {
           byDate[dateKey] = { status: "On Leave", punchIn: "", punchOut: "", workedHours: 0 };
           continue;

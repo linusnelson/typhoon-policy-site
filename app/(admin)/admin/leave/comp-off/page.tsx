@@ -6,7 +6,7 @@ import { CompOffForm } from "@/components/admin/CompOffForm";
 
 export default async function CompOffPage() {
   const [employees, grants] = await Promise.all([
-    listEmployeeOptions(),
+    listEmployeeOptions({ activeOnly: true }),
     listCompOffGrants(),
   ]);
   const today = istToday();

@@ -1,6 +1,17 @@
 import { redirect } from "next/navigation";
 import { getCurrentEmployee } from "@/lib/policies";
+import { istToday } from "@/lib/ist";
 import type { Employee } from "@/lib/types";
+
+// Active AND not past their relieving date (last working day — access runs
+// through that day, cut from the next IST day). The daily cron also flips
+// status → inactive, but checking here makes the cutoff immediate.
+export function isAccessActive(employee: Employee): boolean {
+  return (
+    employee.status === "active" &&
+    (!employee.relieving_date || employee.relieving_date >= istToday())
+  );
+}
 
 export class AuthzError extends Error {
   constructor(message = "Not authorized") {
@@ -14,7 +25,7 @@ export class AuthzError extends Error {
 
 export async function requireEmployee(): Promise<Employee> {
   const employee = await getCurrentEmployee();
-  if (!employee || employee.status !== "active") {
+  if (!employee || !isAccessActive(employee)) {
     throw new AuthzError("You must be signed in as an active employee.");
   }
   return employee;
@@ -40,7 +51,7 @@ export async function requireAdminOrManager(): Promise<Employee> {
 // can be called at the top of a server-component page. Admins may view too.
 export async function requireManagerView(): Promise<Employee> {
   const employee = await getCurrentEmployee();
-  if (!employee || employee.status !== "active") redirect("/login");
+  if (!employee || !isAccessActive(employee)) redirect("/login");
   if (employee.role !== "manager" && employee.role !== "admin") redirect("/");
   return employee;
 }
@@ -59,7 +70,7 @@ export async function requireExpenseApprover(): Promise<Employee> {
 // accounts users are usually not admins and the admin layout bounces them).
 export async function requireExpenseApproverView(): Promise<Employee> {
   const employee = await getCurrentEmployee();
-  if (!employee || employee.status !== "active") redirect("/login");
+  if (!employee || !isAccessActive(employee)) redirect("/login");
   if (employee.role !== "admin" && !employee.is_expense_approver) redirect("/");
   return employee;
 }

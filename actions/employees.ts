@@ -54,6 +54,16 @@ export async function createEmployeeDirect(
   if (!ROLES.includes(role)) {
     return { ok: false, error: "Invalid role." };
   }
+  {
+    const doj = str(formData, "date_of_joining");
+    const relieving = str(formData, "relieving_date");
+    if (relieving && doj && relieving < doj) {
+      return {
+        ok: false,
+        error: "Relieving date cannot be before the date of joining.",
+      };
+    }
+  }
 
   const supabase = createAdminClient();
 
@@ -94,6 +104,7 @@ export async function createEmployeeDirect(
     shift_id: str(formData, "shift_id"),
     team_id: str(formData, "team_id"),
     date_of_joining: str(formData, "date_of_joining"),
+    relieving_date: str(formData, "relieving_date"),
     address: str(formData, "address"),
     emergency_contact_name: str(formData, "emergency_contact_name"),
     emergency_contact_phone: str(formData, "emergency_contact_phone"),
@@ -212,6 +223,16 @@ export async function updateEmployee(
   if (!name) return { ok: false, error: "Full name is required." };
   if (!ROLES.includes(role)) return { ok: false, error: "Invalid role." };
   if (!newEmail) return { ok: false, error: "Email is required." };
+  {
+    const doj = str(formData, "date_of_joining");
+    const relieving = str(formData, "relieving_date");
+    if (relieving && doj && relieving < doj) {
+      return {
+        ok: false,
+        error: "Relieving date cannot be before the date of joining.",
+      };
+    }
+  }
 
   const supabase = createAdminClient();
 
@@ -255,6 +276,7 @@ export async function updateEmployee(
       shift_id: str(formData, "shift_id"),
       team_id: str(formData, "team_id"),
       date_of_joining: str(formData, "date_of_joining"),
+      relieving_date: str(formData, "relieving_date"),
       address: str(formData, "address"),
       emergency_contact_name: str(formData, "emergency_contact_name"),
       emergency_contact_phone: str(formData, "emergency_contact_phone"),

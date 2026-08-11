@@ -292,6 +292,8 @@ export function zohoStatus(status: string): string {
       return "I";
     case "LOP":
       return "LOP";
+    case "Not Employed":
+      return "-";
     default:
       return "A";
   }

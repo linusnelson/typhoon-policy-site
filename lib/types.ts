@@ -16,6 +16,9 @@ export interface Employee {
   // policy signing, absent from the org chart, headcount and reports.
   // Authorization is still entirely role + RLS — this only says "not staff".
   is_service_account: boolean;
+  // Last working day ("YYYY-MM-DD"). Access is allowed through this day and
+  // cut from the next IST day (a daily cron also flips status → inactive).
+  relieving_date: string | null;
 }
 
 // ── ClockBays entities (migrated from the Flutter freezed models) ────────────

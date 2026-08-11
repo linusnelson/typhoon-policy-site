@@ -65,12 +65,16 @@ export interface EmployeeOption {
 }
 
 // Lightweight id/name/role list for manager pickers and name resolution.
-export async function listEmployeeOptions(): Promise<EmployeeOption[]> {
+// activeOnly: pickers that assign FUTURE work (team manager, event invites,
+// comp-off) should not offer deactivated/left employees. Regularization keeps
+// the full list — correcting a leaver's past punches is legitimate.
+export async function listEmployeeOptions(
+  opts: { activeOnly?: boolean } = {}
+): Promise<EmployeeOption[]> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("employees")
-    .select("id, name, role")
-    .order("name");
+  let q = supabase.from("employees").select("id, name, role").order("name");
+  if (opts.activeOnly) q = q.eq("status", "active");
+  const { data } = await q;
   return (data as EmployeeOption[]) ?? [];
 }
 

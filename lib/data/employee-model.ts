@@ -17,6 +17,7 @@ export interface EmployeeRow {
   shift_id: string | null;
   team_id: string | null;
   date_of_joining: string | null;
+  relieving_date: string | null;
   address: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;

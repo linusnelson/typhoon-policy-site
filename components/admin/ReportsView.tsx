@@ -36,6 +36,7 @@ const TONE: Record<string, string> = {
   Absent: "bg-danger-soft text-danger-deep",
   LOP: "bg-danger-soft text-danger-deep",
   "No Punch": "bg-gray-100 text-gray-400",
+  "Not Employed": "bg-gray-100 text-gray-400",
 };
 
 function StatusPill({ status }: { status: string }) {

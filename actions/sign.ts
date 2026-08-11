@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { istToday } from "@/lib/ist";
 
 export interface SignResult {
   ok: boolean;
@@ -45,11 +46,21 @@ export async function signVersion(
   // Resolve the employee (id + org) for this session.
   const { data: employee } = await supabase
     .from("employees")
-    .select("id, org_id, status")
+    .select("id, org_id, status, is_service_account, relieving_date")
     .eq("email", user.email)
     .maybeSingle();
-  if (!employee || employee.status !== "active") {
+  if (
+    !employee ||
+    employee.status !== "active" ||
+    (employee.relieving_date && employee.relieving_date < istToday())
+  ) {
     return { ok: false, error: "No active employee record." };
+  }
+  // Signing is for people (any role, admins included) — never login-only
+  // service accounts. The documents UI hides the panel; this is the
+  // server-side enforcement.
+  if (employee.is_service_account) {
+    return { ok: false, error: "Service accounts cannot sign policies." };
   }
 
   // Load the version being signed (RLS guarantees same org + published/visible).

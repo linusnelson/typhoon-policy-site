@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentEmployee } from "@/lib/policies";
+import { isAccessActive } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/data/notifications";
 import { getOrgModules } from "@/lib/data/org";
 import { PortalShell } from "@/components/nav/PortalShell";
@@ -16,6 +17,9 @@ export default async function AdminLayout({
   const employee = await getCurrentEmployee();
 
   if (!employee) redirect("/login");
+  // "/" renders the employee layout's AccessDenied screen for inactive or
+  // relieved accounts (this layout previously skipped the status check).
+  if (!isAccessActive(employee)) redirect("/");
   if (employee.role !== "admin") {
     redirect(employee.role === "manager" ? "/team/leave" : "/");
   }

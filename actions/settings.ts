@@ -39,6 +39,9 @@ export async function updateOrgSettings(
     expenses: bool(formData, "moduleExpenses"),
   };
 
+  // Exit leave settlement — anything but the explicit 'fnf' opt-in is 'lapse'.
+  const exitLeaveMode = str(formData, "exitLeaveMode") === "fnf" ? "fnf" : "lapse";
+
   const supabase = createAdminClient();
 
   // Fresh read immediately before the merge-write (never a stale whole-map write).
@@ -60,7 +63,12 @@ export async function updateOrgSettings(
     .update({
       name,
       go_live_date: goLiveDate,
-      settings: { ...settings, modules, company_address: companyAddress },
+      settings: {
+        ...settings,
+        modules,
+        company_address: companyAddress,
+        exit_leave_mode: exitLeaveMode,
+      },
     })
     .eq("id", admin.org_id);
   if (error) return { ok: false, error: error.message };

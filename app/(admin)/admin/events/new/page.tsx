@@ -12,7 +12,7 @@ export default async function NewEventPage() {
   const [eventTypes, departments, employees] = await Promise.all([
     listEventTypes(),
     listDepartments(),
-    listEmployeeOptions(),
+    listEmployeeOptions({ activeOnly: true }),
   ]);
 
   return (

@@ -85,16 +85,16 @@ This Policy applies to all Employees authorised to undertake business travel on 
 | Travel (flight, train, road) | Actuals, against original tickets/bills |
 | Accommodation (Stay) | Actuals, against original hotel invoice |
 | Local Transport (cabs, autos) | Actuals, against receipts or trip records |
-| Food / Meals | Fixed daily allowance of ₹ 350 per person per day, in lieu of bills |
+| Food / Meals (incl. snacks and refreshments) | Up to ₹ 350 per person per day, against original bills (Breakfast ₹ 100 + Lunch ₹ 150 + Dinner ₹ 100) |
 | Other approved expenses | Actuals, against original bills |
 
-1.5.2 The food allowance at ₹ 350 per person per day shall apply uniformly and shall not require submission of bills. Any expenditure on food in excess of this allowance shall be borne by the Employee.
+1.5.2 Food is reimbursed up to ₹ 350 per person per day, against original bills. The limit is split as ₹ 100 breakfast, ₹ 150 lunch, ₹ 100 dinner — if you skip a meal, only the meals actually taken are payable. Tea, coffee, juices and other snacks are covered within this limit and are not reimbursed separately. Anything spent above ₹ 350 a day is borne by the employee.
 
 1.5.3 The Company shall reimburse expenses on Stay, Food, and Transport. Heads not expressly listed (such as personal entertainment, alcoholic beverages, mini-bar charges, laundry for short trips, and similar items) shall not be reimbursable.
 
 ## 1.6 Submission of Documents
 
-1.6.1 All claims for reimbursement shall be supported by original receipts, invoices, or tickets, except where the head of expense is reimbursed on a per-diem basis under clause 1.5.
+1.6.1 All claims for reimbursement shall be supported by original receipts, invoices, or tickets.
 
 1.6.2 Submission of any forged, altered, or duplicated bill shall be treated as serious misconduct and shall attract action under the Code of Conduct.
 

@@ -67,7 +67,8 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {employee.role !== "admin" && <ActionItems pendingDocs={pendingDocs} />}
+      {/* Everyone signs policies (admins included) — only service accounts don't. */}
+      {!employee.is_service_account && <ActionItems pendingDocs={pendingDocs} />}
 
       {modules.announcements && <AnnouncementsStrip employeeId={employee.id} />}
 

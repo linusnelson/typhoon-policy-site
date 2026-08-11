@@ -168,6 +168,10 @@ export default async function EmployeeDetailPage({
                 label="Date of joining"
                 value={e.date_of_joining ? formatIstDate(e.date_of_joining) : null}
               />
+              <Row
+                label="Relieving date"
+                value={e.relieving_date ? formatIstDate(e.relieving_date) : null}
+              />
               <Row label="Address" value={e.address} />
               <Row label="Emergency contact" value={e.emergency_contact_name} />
               <Row label="Emergency phone" value={e.emergency_contact_phone} />

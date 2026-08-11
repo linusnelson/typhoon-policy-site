@@ -88,6 +88,50 @@ export function SettingsForm({
             </p>
           </div>
           <div>
+            <label className={labelCls}>Exit leave settlement</label>
+            <div className="space-y-2">
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 hover:bg-gray-50">
+                <input
+                  type="radio"
+                  name="exitLeaveMode"
+                  value="lapse"
+                  defaultChecked={org.exitLeaveMode === "lapse"}
+                  className="mt-0.5 h-4 w-4 accent-brand"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-ink">
+                    Lapse — no F&amp;F, no encashment
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    When an employee&apos;s relieving date passes, their remaining
+                    leave balance is zeroed automatically (recorded as an audited
+                    adjustment). Nothing carries forward.
+                  </span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 hover:bg-gray-50">
+                <input
+                  type="radio"
+                  name="exitLeaveMode"
+                  value="fnf"
+                  defaultChecked={org.exitLeaveMode === "fnf"}
+                  className="mt-0.5 h-4 w-4 accent-brand"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-ink">
+                    F&amp;F / encashment
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    The remaining balance is left frozen on the employee&apos;s
+                    record (visible on their detail page) as the figure for final
+                    settlement. Payout itself happens in payroll, outside this
+                    system.
+                  </span>
+                </span>
+              </label>
+            </div>
+          </div>
+          <div>
             <label className={labelCls}>Company address</label>
             <Textarea
               name="companyAddress"

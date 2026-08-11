@@ -286,13 +286,25 @@ export function EmployeeForm({
           </Field>
         </div>
 
-        <Field label="Date of joining">
-          <Input
-            name="date_of_joining"
-            type="date"
-            defaultValue={employee?.date_of_joining ?? ""}
-          />
-        </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Date of joining">
+            <Input
+              name="date_of_joining"
+              type="date"
+              defaultValue={employee?.date_of_joining ?? ""}
+            />
+          </Field>
+          <Field
+            label="Relieving date"
+            hint="Last working day — access is cut from the next day"
+          >
+            <Input
+              name="relieving_date"
+              type="date"
+              defaultValue={employee?.relieving_date ?? ""}
+            />
+          </Field>
+        </div>
       </div>
 
       {/* ── Contact & emergency ────────────────────────────────────── */}

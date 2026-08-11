@@ -61,6 +61,7 @@ type EmpRow = {
   department_id: string | null;
   location_id: string | null;
   date_of_joining: string | null;
+  relieving_date: string | null;
 };
 
 export async function getMuster(
@@ -77,10 +78,16 @@ export async function getMuster(
   const endUtc = istDayBoundsUtc(toKey).endUtc;
   const today = istToday();
 
+  // Active staff plus leavers (relieving_date set) so a past month keeps an
+  // ex-employee's rows after the daily cron flips them inactive; leavers who
+  // exited before this month are dropped, and days after the relieving date
+  // render blank (see the day loop).
   let empQuery = supabase
     .from("employees")
-    .select("id, employee_code, name, department_id, location_id, date_of_joining")
-    .eq("status", "active")
+    .select(
+      "id, employee_code, name, department_id, location_id, date_of_joining, relieving_date"
+    )
+    .or(`status.eq.active,relieving_date.gte.${fromKey}`)
     .neq("role", "admin")
     .eq("is_service_account", false);
   if (f.locationId) empQuery = empQuery.eq("location_id", f.locationId);
@@ -367,8 +374,11 @@ export async function getMuster(
         const d = dm.key;
         const wd = dm.weekday;
 
-        // Before joining → blank.
-        if (joining && d < joining) {
+        // Before joining or after the relieving date → blank (not employed).
+        if (
+          (joining && d < joining) ||
+          (emp.relieving_date && d > emp.relieving_date)
+        ) {
           cells[d] = { quarters: ["none", "none", "none", "none"], note: "—" };
           continue;
         }

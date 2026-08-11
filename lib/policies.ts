@@ -24,7 +24,7 @@ export const getCurrentEmployee = cache(
     const { data } = await supabase
       .from("employees")
       .select(
-        "id, org_id, name, email, role, status, is_expense_approver, is_service_account"
+        "id, org_id, name, email, role, status, is_expense_approver, is_service_account, relieving_date"
       )
       .eq("email", email)
       .maybeSingle();

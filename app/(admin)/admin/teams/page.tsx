@@ -7,7 +7,7 @@ export default async function TeamsPage() {
   const [rows, departments, employees] = await Promise.all([
     listTeams(),
     listDepartments(),
-    listEmployeeOptions(),
+    listEmployeeOptions({ activeOnly: true }),
   ]);
 
   return (

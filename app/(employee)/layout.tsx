@@ -1,4 +1,5 @@
 import { getCurrentEmployee } from "@/lib/policies";
+import { isAccessActive } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/data/notifications";
 import { getOrgModules } from "@/lib/data/org";
 import { PortalShell } from "@/components/nav/PortalShell";
@@ -17,7 +18,13 @@ export default async function EmployeeLayout({
   const employee = await getCurrentEmployee();
 
   if (!employee) return <AccessDenied reason="no-account" />;
-  if (employee.status !== "active") return <AccessDenied reason="inactive" />;
+  if (!isAccessActive(employee)) {
+    return (
+      <AccessDenied
+        reason={employee.status === "active" ? "relieved" : "inactive"}
+      />
+    );
+  }
 
   const [unread, modules] = await Promise.all([
     getUnreadNotificationCount(employee.id),
@@ -42,11 +49,17 @@ export default async function EmployeeLayout({
   );
 }
 
-function AccessDenied({ reason }: { reason: "no-account" | "inactive" }) {
+function AccessDenied({
+  reason,
+}: {
+  reason: "no-account" | "inactive" | "relieved";
+}) {
   const message =
-    reason === "inactive"
-      ? "Your employee account is inactive. Contact HR if this is unexpected."
-      : "Your sign-in isn't linked to a Typhoon employee record. Contact HR to get set up.";
+    reason === "relieved"
+      ? "Your employment with Typhoon has ended, so portal access has been disabled. Contact HR if this is unexpected."
+      : reason === "inactive"
+        ? "Your employee account is inactive. Contact HR if this is unexpected."
+        : "Your sign-in isn't linked to a Typhoon employee record. Contact HR to get set up.";
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <Card className="max-w-md p-8 text-center">
