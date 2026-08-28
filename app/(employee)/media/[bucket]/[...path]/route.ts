@@ -4,8 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
 
-// Authorised proxy for private Storage buckets — selfies, expense bills and
-// announcement attachments.
+// Authorised proxy for private Storage buckets — selfies, expense bills,
+// announcement attachments and leave supporting documents.
 //
 // Replaces handing the browser Supabase signed URLs. A signed URL is a BEARER
 // TOKEN: it works for anyone holding it, with no login, until it expires. The
@@ -23,10 +23,17 @@ export const runtime = "nodejs";
 //                     same-org admin; `profile/…` avatars are org-readable
 //   * expense-bills — can_read_expense_file(): subject, admin, approver
 //   * announcements — can_read_announcement_file(): same-org
+//   * leave-attachments — can_read_leave_attachment(): subject, same-department
+//                     manager, or same-org admin
 // Guessing a path buys nothing that RLS wouldn't already allow. Payslips are
 // deliberately NOT proxied here: they keep their own id-addressed route so the
 // storage path is never exposed at all.
-const ALLOWED = new Set(["selfies", "expense-bills", "announcements"]);
+const ALLOWED = new Set([
+  "selfies",
+  "expense-bills",
+  "announcements",
+  "leave-attachments",
+]);
 
 // Selfies are re-fetched constantly (avatars in lists). A short PRIVATE cache
 // keeps that off the network without ever allowing a shared/proxy cache to
@@ -35,6 +42,7 @@ const CACHE: Record<string, string> = {
   selfies: "private, max-age=300, must-revalidate",
   "expense-bills": "private, no-store",
   announcements: "private, no-store",
+  "leave-attachments": "private, no-store",
 };
 
 export async function GET(

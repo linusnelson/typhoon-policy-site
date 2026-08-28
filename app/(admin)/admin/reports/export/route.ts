@@ -16,8 +16,10 @@ import {
   eventAttendanceCsv,
   advanceDeductionsCsv,
   musterCsv,
+  leaveRegisterCsv,
 } from "@/lib/data/report-types";
 import { getMuster } from "@/lib/data/muster";
+import { fyBounds, listLeaveRegister } from "@/lib/data/leave";
 import { getMyTeamMemberIds } from "@/lib/data/team";
 import { listRepaymentsForMonth } from "@/lib/data/advances";
 import { istToday } from "@/lib/ist";
@@ -106,6 +108,20 @@ export async function GET(req: NextRequest) {
       const rows = await listRepaymentsForMonth(monthKey);
       csv = advanceDeductionsCsv(rows, monthKey);
       filename = `advance_deductions_${month}.csv`;
+      break;
+    }
+    case "leave": {
+      // Always the whole financial year, ignoring the on-screen filters — this
+      // is the leave register for the books, not a snapshot of one view.
+      // ?fy=<start year>, defaulting to the current FY. RLS scopes the rows
+      // (admins org-wide, managers their own team).
+      const fyParam = Number(sp.get("fy"));
+      const fy = Number.isFinite(fyParam) && fyParam > 2000
+        ? fyBounds(`${fyParam}-04-01`)
+        : fyBounds();
+      const rows = await listLeaveRegister({ from: fy.from, to: fy.to });
+      csv = leaveRegisterCsv(rows);
+      filename = `leave_register_fy${fy.fyStart}_${fy.fyStart + 1}.csv`;
       break;
     }
     default:

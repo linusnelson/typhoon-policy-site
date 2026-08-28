@@ -167,7 +167,7 @@ const NAV: NavGroup[] = [
     heading: "Leave",
     items: [
       {
-        label: "Approvals",
+        label: "Requests",
         href: "/admin/leave",
         icon: CheckSquare,
         roles: ["admin"],

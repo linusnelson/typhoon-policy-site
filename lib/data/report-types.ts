@@ -1,6 +1,7 @@
 // Report row models + CSV generators. Client-safe (no server imports) so the
 // preview table and the CSV export route can both consume these.
 // Mirrors clock_bays lib/features/admin/data/report_repository.dart — keep in sync.
+import { LEAVE_DURATION_LABEL } from "@/lib/leave-status";
 
 export type ReportType =
   | "daily"
@@ -539,5 +540,63 @@ export function monthlyExpensesCsv(report: MonthlyExpenseReport): string {
       report.approvedGrandTotal.toFixed(2),
     ].join(",")
   );
+  return lines.join("\n");
+}
+
+// ── Leave register ───────────────────────────────────────────────────────────
+// Every leave request in a financial year, whatever its status — the export
+// behind /admin/leave. Unlike the attendance reports this is a request log, not
+// a per-employee rollup: one row per request, carrying the reason and the
+// approver so it stands on its own as a leave audit trail.
+
+export interface LeaveRegisterCsvRow {
+  employee_code: string | null;
+  employee_name: string | null;
+  department: string | null;
+  leave_type_code: string | null;
+  leave_type_name: string | null;
+  start_date: string;
+  end_date: string;
+  days_count: number;
+  duration_type: string;
+  status: string;
+  sandwich_days_included: number;
+  reason: string | null;
+  admin_comment: string | null;
+  reviewed_by_name: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  attachment_url: string | null;
+}
+
+export function leaveRegisterCsv(rows: LeaveRegisterCsvRow[]): string {
+  const lines = [
+    "Employee ID,Employee Name,Department,Leave Type,Leave Type Name,Start,End," +
+      "Days,Duration,Status,Sandwich Days,Reason,Admin Comment,Reviewed By," +
+      "Reviewed On,Applied On,Attachment",
+  ];
+  for (const r of rows) {
+    lines.push(
+      [
+        csvCell(r.employee_code ?? ""),
+        csvCell(r.employee_name ?? ""),
+        csvCell(r.department ?? ""),
+        csvCell(r.leave_type_code ?? ""),
+        csvCell(r.leave_type_name ?? ""),
+        ddmmyyyy(r.start_date),
+        ddmmyyyy(r.end_date),
+        r.days_count,
+        LEAVE_DURATION_LABEL[r.duration_type] ?? r.duration_type,
+        r.status,
+        r.sandwich_days_included || "",
+        csvCell(r.reason ?? ""),
+        csvCell(r.admin_comment ?? ""),
+        csvCell(r.reviewed_by_name ?? ""),
+        r.reviewed_at ? ddmmyyyy(r.reviewed_at.slice(0, 10)) : "",
+        ddmmyyyy(r.created_at.slice(0, 10)),
+        r.attachment_url ? "Yes" : "",
+      ].join(",")
+    );
+  }
   return lines.join("\n");
 }

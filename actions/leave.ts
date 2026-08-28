@@ -15,6 +15,7 @@ function dayDiffInclusive(start: string, end: string): number {
 
 function revalidate() {
   revalidatePath("/admin/leave");
+  revalidatePath("/team/leave"); // manager register reads the same rows
   revalidatePath("/"); // dashboard ops section (pending-approvals preview)
 }
 
@@ -188,6 +189,77 @@ export async function adminCancelLeave(formData: FormData): Promise<void> {
 
   revalidate();
   revalidatePath(`/admin/employees/${req.employee_id}`);
+}
+
+// Admin re-opens a rejected request, putting it back in the approval queue.
+// Nothing was deducted on rejection, so no balance moves here.
+//
+// Blocked once the leave has ended: LOP is derived live as "rejected leave AND
+// no punch" (lib/data/dashboard.ts), so re-opening a past request would
+// retroactively reclassify days that have already been reported.
+//
+// The rejection's reviewer stamp is cleared so the request reads as genuinely
+// un-reviewed; the mandatory comment on admin_comment carries the why.
+export async function adminReopenLeave(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { ok: false, error: (e as AuthzError).message };
+  }
+
+  const id = str(formData, "id");
+  const comment = str(formData, "comment");
+  if (!id) return { ok: false, error: "Missing request id." };
+  if (!comment) return { ok: false, error: "A comment is required to re-open." };
+
+  const supabase = await createClient();
+
+  const { data: req } = await supabase
+    .from("leave_requests")
+    .select("id, employee_id, org_id, start_date, end_date, status")
+    .eq("id", id)
+    .maybeSingle();
+  if (!req || req.org_id !== admin.org_id)
+    return { ok: false, error: "Leave request not found." };
+  if (req.status !== "rejected")
+    return { ok: false, error: "Only rejected requests can be re-opened." };
+  if ((req.end_date as string) < istToday())
+    return {
+      ok: false,
+      error:
+        "This leave has already ended — re-opening it would change days that are already reported. Apply leave afresh instead.",
+    };
+
+  const { data: updated, error: updErr } = await supabase
+    .from("leave_requests")
+    .update({
+      status: "pending",
+      reviewed_by: null,
+      reviewed_at: null,
+      admin_comment: comment,
+    })
+    .eq("id", id)
+    .eq("status", "rejected")
+    .select("id");
+  if (updErr || !updated || updated.length === 0)
+    return { ok: false, error: updErr?.message ?? "Could not re-open the request." };
+
+  await supabase.from("notifications").insert({
+    employee_id: req.employee_id,
+    org_id: req.org_id,
+    title: "Leave Request Re-opened",
+    body: `Your leave from ${req.start_date} to ${req.end_date} is under review again. Comment: ${comment}`,
+    type: "leave_applied",
+    reference_id: id,
+  });
+
+  revalidate();
+  revalidatePath(`/admin/employees/${req.employee_id}`);
+  return { ok: true, message: "Request re-opened — it is back in the pending queue." };
 }
 
 const VALID_DURATIONS: LeaveDuration[] = [
