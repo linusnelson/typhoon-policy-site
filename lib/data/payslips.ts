@@ -1,4 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
+import {
+  componentsFromSettings,
+  type PayslipComponent,
+} from "@/lib/engine/payslip-components";
 import type { Payslip } from "@/lib/types";
 
 // Payslip reads. RLS: employees see only their own rows; admins and accounts
@@ -96,4 +100,26 @@ export async function listEmployeesForPayslipImport(): Promise<
     date_of_joining: (e.date_of_joining as string | null) ?? null,
     is_service_account: (e.is_service_account as boolean | null) ?? false,
   }));
+}
+
+// ── Component configuration ──────────────────────────────────────────────────
+
+// The org's configured earning/deduction components, for the template route,
+// the manage page and the editor. Session client — organizations RLS grants
+// SELECT to every employee of the org, and every caller here is already behind
+// requireExpenseApprover, so org-wide default amounts never reach an
+// employee's browser. Deliberately NOT folded into getOrg: that one is read by
+// every page for the module flags, and these figures have no business riding
+// along. Writes go through actions/payslip-components.ts (service-role — the
+// org_update_admin policy is admin-only and accounts users must edit too).
+export async function listPayslipComponents(
+  orgId: string
+): Promise<PayslipComponent[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("organizations")
+    .select("settings")
+    .eq("id", orgId)
+    .maybeSingle();
+  return componentsFromSettings(data?.settings);
 }

@@ -6,7 +6,10 @@ import { requireExpenseApprover, AuthzError } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getOrg, moduleEnabled } from "@/lib/data/org";
-import { reimbursementExpectedForMonth } from "@/lib/data/expenses";
+import {
+  paidOutsidePayrollForMonth,
+  reimbursementExpectedForMonth,
+} from "@/lib/data/expenses";
 import {
   listEmployeesForPayslipImport,
   listPayslipStatusForMonth,
@@ -213,6 +216,9 @@ function pdfDataForRow(
     totalDeductions: AMOUNT.format(row.totalDeductions),
     // Omitted from the payslip entirely when nothing was reimbursed.
     reimbursement: row.reimbursement > 0 ? AMOUNT.format(row.reimbursement) : "",
+    // Informational only — already paid outside payroll, never in net.
+    paidOutsidePayroll:
+      row.paidOutsidePayroll > 0 ? AMOUNT.format(row.paidOutsidePayroll) : "",
     // No ₹ glyph in the PDF's built-in Helvetica — write "INR" like the totals.
     netPay: `INR ${AMOUNT.format(row.net)}`,
     netPayWords: amountInWordsINR(row.net),
@@ -321,15 +327,23 @@ export async function importPayslips(
   const monthKey = monthStart(monthRaw.length === 7 ? `${monthRaw}-01` : monthRaw);
 
   // Authoritative server-side re-parse — never trust the client preview.
-  const [employees, statusRows, bankMap, org, expectedReimbursement, text] =
-    await Promise.all([
-      listEmployeesForPayslipImport(),
-      listPayslipStatusForMonth(monthKey),
-      listBankDetailsMap(),
-      getOrg(approver.org_id),
-      reimbursementExpectedForMonth(monthKey),
-      file.text(),
-    ]);
+  const [
+    employees,
+    statusRows,
+    bankMap,
+    org,
+    expectedReimbursement,
+    paidOutside,
+    text,
+  ] = await Promise.all([
+    listEmployeesForPayslipImport(),
+    listPayslipStatusForMonth(monthKey),
+    listBankDetailsMap(),
+    getOrg(approver.org_id),
+    reimbursementExpectedForMonth(monthKey),
+    paidOutsidePayrollForMonth(monthKey),
+    file.text(),
+  ]);
   const existingIds = new Set(
     statusRows.filter((r) => r.payslip !== null).map((r) => r.employeeId)
   );
@@ -342,6 +356,7 @@ export async function importPayslips(
       has_bank_details: bankMap.has(e.id),
       is_service_account: e.is_service_account,
       expected_reimbursement: expectedReimbursement.get(e.id) ?? 0,
+      paid_outside_payroll: paidOutside.get(e.id) ?? 0,
     })),
     existingIds,
     daysInMonthOf(monthKey)
@@ -393,7 +408,7 @@ export async function importPayslips(
           // Generation-time snapshot (bank values from the profile, "" when
           // missing) for audit / future re-rendering.
           details: {
-            version: 2,
+            version: 3,
             bank_name: bank?.bankName ?? "",
             bank_account_no: bank?.bankAccountNo ?? "",
             pan: bank?.pan ?? "",
@@ -405,6 +420,7 @@ export async function importPayslips(
             gross: row.gross,
             total_deductions: row.totalDeductions,
             reimbursement: row.reimbursement,
+            paid_outside_payroll: row.paidOutsidePayroll,
             net: row.net,
           },
         },

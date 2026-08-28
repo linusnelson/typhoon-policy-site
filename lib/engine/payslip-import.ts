@@ -10,6 +10,14 @@ import { parseCsv } from "../csv";
 //   * Fixed columns (any order): employee_code, name, lop
 //   * Any number of "E:<Label>" earning and "D:<Label>" deduction columns —
 //     accounts adds/removes components without code changes
+//   * Three reserved columns are accepted and IGNORED on import (the template
+//     writes them for the person filling the sheet, not for us to read back):
+//     "TOTAL PAYABLE" — an Excel formula that shows net pay live as amounts
+//     are typed; "PAID OUTSIDE PAYROLL" — approved claims already settled by
+//     bank transfer, printed on the payslip for the record but not paid again;
+//     and "LOAN/ADVANCE DISBURSAL" — loan money paid out separately, which
+//     never appears on the payslip. All three are recomputed server-side,
+//     never taken from a cell.
 //   * The month is NOT a CSV column; the page's MonthPicker supplies it
 //   * Effective work days = days in month − LOP (computed, not a column)
 //   * Bank name / account no / PAN come from employee_bank_details in the DB
@@ -19,21 +27,39 @@ import { parseCsv } from "../csv";
 
 export const PAYSLIP_FIXED_COLUMNS = ["employee_code", "name", "lop"] as const;
 
-// Default component set for the downloadable template. The parser accepts any
-// E:/D: columns — this list only seeds the generated template CSV.
-export const PAYSLIP_TEMPLATE_COLUMNS: readonly string[] = [
-  ...PAYSLIP_FIXED_COLUMNS,
-  "E:BASIC",
-  "E:INCENTIVES",
-  "E:REIMBURSEMENT",
-  "E:BONUS",
-  "E:LOAN/ADVANCE DISBURSAL",
-  "D:PROF TAX",
-  "D:LOAN/ADVANCE INSTALLMENT",
-  "D:INSURANCE",
-];
+// Reserved, non-component columns. The template writes them; the parser
+// accepts them so a round-tripped file imports, and ignores whatever they
+// hold — Excel replaces the TOTAL PAYABLE formula with its evaluated value on
+// save, and the other two are reference-only.
+export const PAYSLIP_TOTAL_COLUMN = "TOTAL PAYABLE";
+export const PAYSLIP_PAID_OUTSIDE_COLUMN = "PAID OUTSIDE PAYROLL";
 
-export const PAYSLIP_TEMPLATE_DISBURSAL_COLUMN = "E:LOAN/ADVANCE DISBURSAL";
+// A loan/advance paid OUT to the employee is not salary and does not belong on
+// the payslip at all: it is a separate transfer the Advances module already
+// records, and only its monthly installment comes back as a deduction. The
+// template still carries the figure so accounts can see what was disbursed
+// while filling the sheet — reference only, never printed, never summed.
+//
+// It used to be an "E:" earning column, which put loan money inside gross. Any
+// such column in an older file is ignored too (the reserved check runs on the
+// label with an E:/D: prefix stripped), so re-importing a stale template
+// produces the correct, uninflated net rather than silently paying it twice.
+export const PAYSLIP_DISBURSAL_COLUMN = "LOAN/ADVANCE DISBURSAL";
+
+const RESERVED_COLUMNS: ReadonlySet<string> = new Set([
+  PAYSLIP_TOTAL_COLUMN,
+  PAYSLIP_PAID_OUTSIDE_COLUMN,
+  PAYSLIP_DISBURSAL_COLUMN,
+]);
+
+// True for "TOTAL PAYABLE", "paid outside payroll", and also "E:LOAN/ADVANCE
+// DISBURSAL" — the prefix is stripped before the compare so a stale component
+// column can't reintroduce a reserved figure as an earning or a deduction.
+export function isReservedColumn(rawHeader: string): boolean {
+  const withoutPrefix = rawHeader.replace(/^\s*[ED]\s*:\s*/i, "");
+  return RESERVED_COLUMNS.has(normalizeLabel(withoutPrefix));
+}
+
 export const PAYSLIP_TEMPLATE_INSTALLMENT_COLUMN = "D:LOAN/ADVANCE INSTALLMENT";
 export const PAYSLIP_TEMPLATE_REIMBURSEMENT_COLUMN = "E:REIMBURSEMENT";
 
@@ -61,6 +87,11 @@ export interface PayslipEmployeeRef {
   // plus anything already paid by THIS month's payslip (so a re-import of the
   // same month matches instead of failing). Undefined = don't check.
   expected_reimbursement?: number;
+  // Claims approved in this month that were ALREADY settled outside payroll
+  // (bulk "Mark reimbursed" in the expenses module). Printed on the payslip
+  // for the record and never added to net — the employee already has the
+  // money. Server-supplied: the CSV's reference column is not read back.
+  paid_outside_payroll?: number;
 }
 
 export interface PayslipItem {
@@ -79,6 +110,7 @@ export interface ParsedPayslipRow {
   earnings: PayslipItem[]; // CSV column order, EXCLUDING reimbursement
   deductions: PayslipItem[]; // CSV column order
   reimbursement: number; // E:REIMBURSEMENT — not salary, see the label const
+  paidOutsidePayroll: number; // already settled — informational, not in net
   gross: number; // earnings only — reimbursement excluded
   totalDeductions: number;
   net: number; // gross − deductions + reimbursement
@@ -101,7 +133,7 @@ function parseAmount(raw: string): number {
 }
 
 // "e: Shift  Allowance " → "SHIFT ALLOWANCE"
-function normalizeLabel(raw: string): string {
+export function normalizeLabel(raw: string): string {
   return raw.trim().replace(/\s+/g, " ").toUpperCase();
 }
 
@@ -166,6 +198,9 @@ export function parsePayslipCsv(
     if ((PAYSLIP_FIXED_COLUMNS as readonly string[]).includes(lower)) {
       if (fixedIndex.has(lower)) headerErrors.push(`Duplicate column "${lower}".`);
       else fixedIndex.set(lower, i);
+    } else if (isReservedColumn(raw)) {
+      // Accepted so a round-tripped template imports; the value is never read.
+      continue;
     } else if (prefixMatch) {
       const side = prefixMatch[1].toUpperCase() as "E" | "D";
       const label = normalizeLabel(prefixMatch[2]);
@@ -335,6 +370,7 @@ export function parsePayslipCsv(
       earnings,
       deductions,
       reimbursement,
+      paidOutsidePayroll: employee?.paid_outside_payroll ?? 0,
       gross,
       totalDeductions,
       net,

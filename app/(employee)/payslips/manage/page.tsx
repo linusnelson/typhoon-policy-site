@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SlidersHorizontal } from "lucide-react";
 import { requireExpenseApproverView } from "@/lib/auth";
 import { moduleEnabled } from "@/lib/data/org";
 import {
@@ -6,7 +8,10 @@ import {
   listPayslipStatusForMonth,
 } from "@/lib/data/payslips";
 import { listBankDetailsMap } from "@/lib/data/bank-details";
-import { reimbursementExpectedForMonth } from "@/lib/data/expenses";
+import {
+  paidOutsidePayrollForMonth,
+  reimbursementExpectedForMonth,
+} from "@/lib/data/expenses";
 import { deletePayslip } from "@/actions/payslips";
 import { Badge, Banner, Button, Card } from "@/components/ui";
 import { MonthPicker } from "@/components/admin/advances/MonthPicker";
@@ -35,7 +40,7 @@ export default async function ManagePayslipsPage({
     ? monthStart(params.month.length === 7 ? `${params.month}-01` : params.month)
     : monthStart(istToday());
 
-  const [rows, bankMap, importEmployees, expectedReimbursement] =
+  const [rows, bankMap, importEmployees, expectedReimbursement, paidOutside] =
     await Promise.all([
       listPayslipStatusForMonth(monthKey),
       listBankDetailsMap(),
@@ -43,6 +48,7 @@ export default async function ManagePayslipsPage({
       // accounts (flagged) so the preview and the import agree on the error.
       listEmployeesForPayslipImport(),
       reimbursementExpectedForMonth(monthKey),
+      paidOutsidePayrollForMonth(monthKey),
     ]);
   const uploaded = rows.filter((r) => r.payslip !== null);
   const missingBank = rows.filter((r) => !bankMap.has(r.employeeId));
@@ -54,12 +60,19 @@ export default async function ManagePayslipsPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-bold text-ink">Payslips</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Import the monthly payroll CSV to generate payslips for everyone, or
-          upload individual PDFs — each employee can download only their own.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="font-display text-2xl font-bold text-ink">Payslips</h1>
+          <p className="mt-1 text-sm text-gray-500">
+            Import the monthly payroll CSV to generate payslips for everyone, or
+            upload individual PDFs — each employee can download only their own.
+          </p>
+        </div>
+        <Link href="/payslips/earnings-deductions">
+          <Button variant="secondary" type="button">
+            <SlidersHorizontal className="h-4 w-4" /> Earnings &amp; deductions
+          </Button>
+        </Link>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -82,11 +95,14 @@ export default async function ManagePayslipsPage({
           Import from CSV
         </h2>
         <p className="mb-4 text-xs text-gray-400">
-          Download the prefilled template (loan/advance installments and
-          disbursals for {formatMonth(monthKey)} are filled from the Advances
-          module), add earnings/deductions — any &quot;E:&quot; or &quot;D:&quot;
-          column works — and import. A branded payslip PDF is generated and each
-          employee is notified.
+          Download the prefilled template — its columns come from your
+          configured earnings &amp; deductions, with loan/advance installments
+          and disbursals for {formatMonth(monthKey)} filled from the Advances
+          module and approved expense claims from Expenses. Fill in the
+          amounts (the <span className="font-semibold">Total Payable</span>{" "}
+          column adds up as you type) and import. Any &quot;E:&quot; or
+          &quot;D:&quot; column works, configured or not. A branded payslip PDF
+          is generated and each employee is notified.
         </p>
         <PayslipImportForm
           monthKey={monthKey}
@@ -97,6 +113,7 @@ export default async function ManagePayslipsPage({
             has_bank_details: bankMap.has(e.id),
             is_service_account: e.is_service_account,
             expected_reimbursement: expectedReimbursement.get(e.id) ?? 0,
+            paid_outside_payroll: paidOutside.get(e.id) ?? 0,
           }))}
           existingEmployeeIds={uploaded.map((r) => r.employeeId)}
         />

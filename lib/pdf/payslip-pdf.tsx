@@ -76,6 +76,14 @@ const s = StyleSheet.create({
     color: PDF.ink,
     textAlign: "right",
   },
+  // Informational figure — deliberately lighter than reimburseAmount so it
+  // doesn't read as money being paid on this payslip.
+  reimburseAmountMuted: {
+    fontSize: 9,
+    fontFamily: "Helvetica",
+    color: PDF.gray500,
+    textAlign: "right",
+  },
   netRow: { flexDirection: "row", alignItems: "baseline" },
   netLabel: { fontSize: 10, fontFamily: "Helvetica-Bold", color: PDF.ink },
   netValue: { fontSize: 12, fontFamily: "Helvetica-Bold", color: PDF.brand, marginLeft: 8 },
@@ -124,6 +132,10 @@ export interface PayslipPdfData {
   // Expense reimbursement paid with this salary. "" = none, row is omitted.
   // Excluded from totalEarnings by design; included in netPay.
   reimbursement: string;
+  // Claims approved this month but already settled outside payroll (bulk
+  // "Mark reimbursed"). Printed for the record only — NOT in netPay, the
+  // employee already has the money. "" = none, row is omitted.
+  paidOutsidePayroll: string;
   netPay: string;
   netPayWords: string; // "Rupees … Only"
 }
@@ -216,6 +228,19 @@ export function PayslipPdf(d: PayslipPdfData) {
             total={d.totalDeductions}
           />
         </View>
+
+        {d.paidOutsidePayroll !== "" && (
+          <View style={s.reimburseRow}>
+            <View style={s.reimburseLabel}>
+              <Text>Reimbursed Separately</Text>
+              <Text style={s.reimburseNote}>
+                Approved expense claims already paid to you outside this
+                payslip — shown for the record, not included in net pay.
+              </Text>
+            </View>
+            <Text style={s.reimburseAmountMuted}>{d.paidOutsidePayroll}</Text>
+          </View>
+        )}
 
         {d.reimbursement !== "" && (
           <View style={s.reimburseRow}>

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { foodUsedForHeads } from "@/lib/engine/expense";
-import { istToday } from "@/lib/ist";
+import { istDayBoundsUtc, istToday } from "@/lib/ist";
+import { addMonths } from "@/lib/engine/advance";
 import type {
   ExpenseAttachment,
   ExpenseClaim,
@@ -771,6 +772,48 @@ export async function reimbursementExpectedForMonth(
 interface ClaimAmountRow {
   employee_id: string;
   reimbursable_amount: number;
+}
+
+// Claims this month's payslip should REPORT but not pay: approved during the
+// month and already settled outside payroll — the bulk "Mark reimbursed" in
+// the expenses module — so `reimbursed_in_payslip_id` is null. They print on
+// the payslip as an informational line and stay out of net pay; the employee
+// already has the money.
+//
+// Scoped by reviewed_at (the approve/reject stamp — there is no approved_at
+// column) rather than reimbursed_at, so a claim lands on the payslip for the
+// month it was approved in, whenever the transfer actually cleared. A handful
+// of older claims carry no reviewed_at at all (verified on development), and
+// scoping on it alone would drop them from every payslip — those fall back to
+// reimbursed_at. The remaining seam: a claim approved AND paid after that
+// month's payslip was generated belongs to a closed month and appears on
+// neither slip until the month is regenerated.
+export async function paidOutsidePayrollForMonth(
+  monthKey: string // "YYYY-MM-01"
+): Promise<Map<string, number>> {
+  const { startUtc } = istDayBoundsUtc(monthKey);
+  const { startUtc: endUtc } = istDayBoundsUtc(addMonths(monthKey, 1));
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("expense_claims")
+    .select("employee_id, reimbursable_amount")
+    .eq("status", "reimbursed")
+    .is("reimbursed_in_payslip_id", null)
+    .or(
+      `and(reviewed_at.gte.${startUtc},reviewed_at.lt.${endUtc}),` +
+        `and(reviewed_at.is.null,reimbursed_at.gte.${startUtc},reimbursed_at.lt.${endUtc})`
+    )
+    .limit(PAYOUT_MAX_CLAIMS);
+
+  const totals = new Map<string, number>();
+  for (const r of ((data as ClaimAmountRow[] | null) ?? [])) {
+    totals.set(
+      r.employee_id,
+      (totals.get(r.employee_id) ?? 0) + Number(r.reimbursable_amount)
+    );
+  }
+  return totals;
 }
 
 // The claims a payslip import will close for one employee: everything approved

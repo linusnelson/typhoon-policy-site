@@ -8,6 +8,7 @@ import {
   AuthzError,
 } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { moduleEnabled } from "@/lib/data/org";
 import {
   getFoodDayTotal,
@@ -38,6 +39,10 @@ import {
 // rows) and guarded transitions (.eq("status", …) + affected-rows checks).
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+// Ceiling on one bulk reimburse — well above a realistic payout run, and it
+// keeps the notification fan-out and the .in() filter bounded.
+const BULK_REIMBURSE_MAX = 500;
 
 function revalidate() {
   revalidatePath("/expenses");
@@ -878,6 +883,116 @@ export async function markReimbursed(
   );
   revalidate();
   return { ok: true, message: "Marked as reimbursed." };
+}
+
+export interface BulkReimburseState extends ActionState {
+  closed?: number;
+  skipped?: number;
+}
+
+// Close a batch of approved claims in one go, with a single payment reference
+// for the whole transfer — the "To reimburse" queue emptied after the bank run.
+//
+// SERVICE-ROLE client, deliberately, for the same reason as
+// linkReimbursedClaims in actions/payslips.ts: the approver RLS policy on
+// expense_claims carries `employee_id <> auth_employee_id()` (the
+// self-approval fix in 20260710000002), so an accounts user closing a batch
+// that includes their OWN claim would have that row silently skipped — money
+// paid, claim still in the queue. This is not self-approval: approval already
+// happened, this only records payment. Because RLS is bypassed, the org scope
+// that the policy would have enforced is applied explicitly below, and the
+// status guard keeps the transition one-way.
+//
+// Claims closed here are NOT linked to a payslip (reimbursed_in_payslip_id
+// stays null), which is what makes them show up on that month's payslip as the
+// informational "Reimbursed Separately" line — see paidOutsidePayrollForMonth.
+export async function bulkMarkReimbursed(
+  _prev: BulkReimburseState,
+  formData: FormData
+): Promise<BulkReimburseState> {
+  let approver;
+  try {
+    approver = await requireExpenseApprover();
+    await assertModuleOn(approver.org_id);
+  } catch (e) {
+    return { ok: false, error: (e as AuthzError).message };
+  }
+
+  const raw = str(formData, "ids");
+  let ids: string[];
+  try {
+    const parsed = JSON.parse(raw ?? "[]");
+    ids = Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+  } catch {
+    return { ok: false, error: "Could not read the selection." };
+  }
+  if (ids.length === 0) return { ok: false, error: "Select at least one claim." };
+  if (ids.length > BULK_REIMBURSE_MAX) {
+    return {
+      ok: false,
+      error: `Too many claims selected (${ids.length}). Do it in batches of ${BULK_REIMBURSE_MAX}.`,
+    };
+  }
+
+  const paymentReference = str(formData, "paymentReference");
+  const admin = createAdminClient();
+
+  const { data: updated, error } = await admin
+    .from("expense_claims")
+    .update({
+      status: "reimbursed",
+      reimbursed_by: approver.id,
+      reimbursed_at: new Date().toISOString(),
+      payment_reference: paymentReference,
+    })
+    .eq("org_id", approver.org_id) // RLS is bypassed — scope explicitly
+    .eq("status", "approved") // one-way; anything else was already handled
+    .in("id", ids)
+    .select("id, employee_id, reimbursable_amount");
+  if (error) return { ok: false, error: error.message };
+
+  const closed = updated ?? [];
+  const skipped = ids.length - closed.length;
+
+  // One rolled-up notification per employee — a 40-claim payout run must not
+  // fire 40 pings at one person.
+  const byEmployee = new Map<string, { total: number; count: number }>();
+  for (const c of closed) {
+    const key = c.employee_id as string;
+    const entry = byEmployee.get(key) ?? { total: 0, count: 0 };
+    entry.total += Number(c.reimbursable_amount);
+    entry.count += 1;
+    byEmployee.set(key, entry);
+  }
+
+  const supabase = await createClient();
+  await Promise.all(
+    [...byEmployee.entries()].map(([employeeId, { total, count }]) =>
+      notifyEmployee(supabase, approver.org_id, employeeId, {
+        title: "Expense Reimbursed",
+        body:
+          `${formatINR(total)} has been reimbursed across ${count} claim` +
+          `${count === 1 ? "" : "s"}` +
+          `${paymentReference ? ` (ref: ${paymentReference})` : ""}.`,
+        type: "expense_reimbursed",
+        reference_id: closed.find((c) => c.employee_id === employeeId)!.id as string,
+      })
+    )
+  );
+
+  revalidate();
+  return {
+    ok: skipped === 0,
+    closed: closed.length,
+    skipped,
+    ...(skipped === 0
+      ? {
+          message: `Marked ${closed.length} claim${closed.length === 1 ? "" : "s"} reimbursed across ${byEmployee.size} employee${byEmployee.size === 1 ? "" : "s"}.`,
+        }
+      : {
+          error: `Marked ${closed.length} of ${ids.length} reimbursed — ${skipped} had already moved on. Reload to see the current queue.`,
+        }),
+  };
 }
 
 // ── Admin: policy + approver flags ───────────────────────────────────────────

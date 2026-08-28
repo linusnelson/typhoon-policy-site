@@ -209,6 +209,20 @@ const NAV: NavGroup[] = [
         module: "advances",
       },
       {
+        // The monthly deduction run for accounts users — outside /admin so
+        // non-admin approvers can reach it (the admin layout bounces them).
+        // Admins see the same view as a tab on /admin/advances.
+        label: "Loan Deductions",
+        href: "/advances/deductions",
+        icon: Wallet,
+        // Non-admin approvers only: an admin reaches the same view as the
+        // "Monthly deductions" tab of Loans & Advances above, so listing it
+        // twice for them would just be clutter.
+        roles: ["employee", "manager"],
+        module: "advances",
+        approverOnly: true,
+      },
+      {
         // Payroll management for accounts users — outside /admin so non-admin
         // approvers can reach it (the admin layout bounces them).
         label: "Payslips",

@@ -3,10 +3,20 @@ import assert from "node:assert/strict";
 import { parseCsv, csvCell } from "../csv";
 import { amountInWordsINR } from "../inr-words";
 import {
-  PAYSLIP_TEMPLATE_COLUMNS,
+  PAYSLIP_DISBURSAL_COLUMN,
+  PAYSLIP_FIXED_COLUMNS,
+  PAYSLIP_PAID_OUTSIDE_COLUMN,
+  PAYSLIP_TOTAL_COLUMN,
   parsePayslipCsv,
   type PayslipEmployeeRef,
 } from "./payslip-import";
+import {
+  DEFAULT_PAYSLIP_COMPONENTS,
+  componentsFromSettings,
+  validateComponentLabel,
+  validateComponents,
+  type PayslipComponent,
+} from "./payslip-components";
 
 // ── parseCsv / csvCell ───────────────────────────────────────────────────────
 
@@ -312,12 +322,179 @@ test("currency formatting, blanks as zero, overwrite flag", () => {
   assert.equal(rows[0].willOverwrite, true);
 });
 
+// Mirrors the header the template route writes: fixed columns, earnings,
+// deductions, then the two reserved reference columns.
+function templateHeader(components: readonly PayslipComponent[]): string {
+  const ordered = [
+    ...components.filter((c) => c.side === "E"),
+    ...components.filter((c) => c.side === "D"),
+  ];
+  return [
+    ...PAYSLIP_FIXED_COLUMNS,
+    ...ordered.map((c) => `${c.side}:${c.label}`),
+    PAYSLIP_TOTAL_COLUMN,
+    PAYSLIP_DISBURSAL_COLUMN,
+    PAYSLIP_PAID_OUTSIDE_COLUMN,
+  ].join(",");
+}
+
 test("template columns parse cleanly as a header", () => {
   const { headerErrors } = parsePayslipCsv(
-    `${PAYSLIP_TEMPLATE_COLUMNS.join(",")}\n`,
+    `${templateHeader(DEFAULT_PAYSLIP_COMPONENTS)}\n`,
     EMPLOYEES,
     new Set(),
     DAYS
   );
   assert.deepEqual(headerErrors, []);
+});
+
+test("reserved columns are ignored, not read as components", () => {
+  const header = templateHeader(DEFAULT_PAYSLIP_COMPONENTS);
+  // Excel writes the evaluated formula back on save — a number, not "=SUM(…)".
+  const csv =
+    `${header}\n` +
+    "TES001,Asha,0,1000,0,0,0,200,0,0,800,50000,4321\n";
+  const { headerErrors, rows } = parsePayslipCsv(csv, EMPLOYEES, new Set(), DAYS);
+  assert.deepEqual(headerErrors, []);
+  assert.deepEqual(rows[0].errors, []);
+  assert.equal(rows[0].gross, 1000);
+  assert.equal(rows[0].totalDeductions, 200);
+  assert.equal(rows[0].net, 800);
+  // 800 / 50000 / 4321 sat under the reserved columns, not taken as items.
+  assert.equal(rows[0].earnings.length, 3); // 4 E columns − reimbursement
+  assert.equal(rows[0].deductions.length, 3);
+});
+
+test("reserved column headers are case- and space-insensitive", () => {
+  const header = `employee_code,name,lop,E:BASIC,  total payable ,paid outside payroll`;
+  const { headerErrors } = parsePayslipCsv(`${header}\n`, EMPLOYEES, new Set(), DAYS);
+  assert.deepEqual(headerErrors, []);
+});
+
+// A loan paid out is not salary. It used to be an "E:" earning column, so a
+// stale template must not put loan money back into gross on re-import.
+test("a stale E:LOAN/ADVANCE DISBURSAL column is ignored, not counted as gross", () => {
+  const header =
+    "employee_code,name,lop,E:BASIC,E:LOAN/ADVANCE DISBURSAL,D:PROF TAX";
+  const csv = `${header}\n` + "TES001,Asha,0,1000,50000,200\n";
+  const { headerErrors, rows } = parsePayslipCsv(csv, EMPLOYEES, new Set(), DAYS);
+  assert.deepEqual(headerErrors, []);
+  assert.deepEqual(rows[0].errors, []);
+  assert.equal(rows[0].gross, 1000); // NOT 51000
+  assert.equal(rows[0].net, 800);
+  assert.equal(rows[0].earnings.length, 1);
+});
+
+test("the bare disbursal reference column is ignored too", () => {
+  const header = `employee_code,name,lop,E:BASIC,${PAYSLIP_DISBURSAL_COLUMN}`;
+  const csv = `${header}\n` + "TES001,Asha,0,1000,50000\n";
+  const { headerErrors, rows } = parsePayslipCsv(csv, EMPLOYEES, new Set(), DAYS);
+  assert.deepEqual(headerErrors, []);
+  assert.equal(rows[0].gross, 1000);
+});
+
+test("paidOutsidePayroll comes from the server ref, never the CSV cell", () => {
+  const header = templateHeader(DEFAULT_PAYSLIP_COMPONENTS);
+  const csv = `${header}\n` + "TES001,Asha,0,1000,0,0,0,0,0,0,999,0,999\n";
+  const employees: PayslipEmployeeRef[] = EMPLOYEES.map((e) =>
+    e.employee_code === "TES001" ? { ...e, paid_outside_payroll: 250 } : e
+  );
+  const { rows } = parsePayslipCsv(csv, employees, new Set(), DAYS);
+  assert.equal(rows[0].paidOutsidePayroll, 250);
+  assert.equal(rows[0].net, 1000); // informational — stays out of net
+});
+
+// ── component configuration ──────────────────────────────────────────────────
+
+test("componentsFromSettings: absent key falls back to the seed list", () => {
+  assert.deepEqual(componentsFromSettings({}), [...DEFAULT_PAYSLIP_COMPONENTS]);
+  assert.deepEqual(componentsFromSettings(null), [...DEFAULT_PAYSLIP_COMPONENTS]);
+});
+
+test("componentsFromSettings: re-inserts missing machine-fed components", () => {
+  const parsed = componentsFromSettings({
+    payslip_components: [{ label: "BASIC", side: "E" }],
+  });
+  const labels = parsed.map((c) => c.label);
+  assert.ok(labels.includes("REIMBURSEMENT"));
+  assert.ok(labels.includes("LOAN/ADVANCE INSTALLMENT"));
+  // The disbursal is a reserved reference column, never a component.
+  assert.equal(labels.includes("LOAN/ADVANCE DISBURSAL"), false);
+});
+
+test("componentsFromSettings: drops a stored disbursal component", () => {
+  const parsed = componentsFromSettings({
+    payslip_components: [
+      { label: "BASIC", side: "E" },
+      { label: "LOAN/ADVANCE DISBURSAL", side: "E", appliesToAll: true },
+    ],
+  });
+  assert.equal(parsed.some((c) => c.label === "LOAN/ADVANCE DISBURSAL"), false);
+});
+
+test("componentsFromSettings: normalises labels, drops junk and duplicates", () => {
+  const parsed = componentsFromSettings({
+    payslip_components: [
+      { label: "  shift   allowance ", side: "E", defaultAmount: 500, appliesToAll: true },
+      { label: "SHIFT ALLOWANCE", side: "E" }, // duplicate
+      { label: "=cmd", side: "D" }, // formula lead — dropped
+      { label: "", side: "E" }, // empty — dropped
+      "nonsense",
+    ],
+  });
+  const shift = parsed.find((c) => c.label === "SHIFT ALLOWANCE");
+  assert.equal(shift?.defaultAmount, 500);
+  assert.equal(shift?.appliesToAll, true);
+  assert.equal(parsed.filter((c) => c.label === "SHIFT ALLOWANCE").length, 1);
+  assert.equal(parsed.some((c) => c.label === "=CMD"), false);
+});
+
+test("componentsFromSettings: a stored default on a machine-fed column is neutralised", () => {
+  const parsed = componentsFromSettings({
+    payslip_components: [
+      { label: "BASIC", side: "E" },
+      { label: "REIMBURSEMENT", side: "E", defaultAmount: 9999, appliesToAll: true },
+    ],
+  });
+  const reimb = parsed.find((c) => c.label === "REIMBURSEMENT");
+  assert.equal(reimb?.defaultAmount, 0);
+  assert.equal(reimb?.appliesToAll, false);
+});
+
+test("validateComponentLabel: rejects formula leads and CSV-breaking characters", () => {
+  assert.equal(validateComponentLabel("BASIC"), null);
+  assert.ok(validateComponentLabel("=SUM(A1)"));
+  assert.ok(validateComponentLabel("+BASIC"));
+  assert.ok(validateComponentLabel("-BASIC"));
+  assert.ok(validateComponentLabel("@BASIC"));
+  assert.ok(validateComponentLabel("E:BASIC")); // colon would break the prefix
+  assert.ok(validateComponentLabel("A,B"));
+  assert.ok(validateComponentLabel(""));
+  // Reserved names can't be re-added as components.
+  assert.ok(validateComponentLabel("TOTAL PAYABLE"));
+  assert.ok(validateComponentLabel("LOAN/ADVANCE DISBURSAL"));
+  assert.ok(validateComponentLabel("PAID OUTSIDE PAYROLL"));
+});
+
+test("validateComponents: catches duplicates, negatives and removed pinned columns", () => {
+  const ok = validateComponents([...DEFAULT_PAYSLIP_COMPONENTS]);
+  assert.deepEqual(ok, []);
+
+  const dupe = validateComponents([
+    ...DEFAULT_PAYSLIP_COMPONENTS,
+    { label: "BASIC", side: "E", defaultAmount: 0, appliesToAll: false },
+  ]);
+  assert.ok(dupe.some((e) => e.includes("Duplicate")));
+
+  const negative = validateComponents(
+    DEFAULT_PAYSLIP_COMPONENTS.map((c) =>
+      c.label === "BASIC" ? { ...c, defaultAmount: -1 } : c
+    )
+  );
+  assert.ok(negative.some((e) => e.includes("invalid default")));
+
+  const removed = validateComponents(
+    DEFAULT_PAYSLIP_COMPONENTS.filter((c) => c.label !== "REIMBURSEMENT")
+  );
+  assert.ok(removed.some((e) => e.includes("can't be removed")));
 });

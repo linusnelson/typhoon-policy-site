@@ -7,6 +7,11 @@ import { listExpenses, groupExpensesByVisit } from "@/lib/data/expenses";
 import { Badge, Button, Card } from "@/components/ui";
 import { TabNav } from "@/components/ui/Tabs";
 import { ExpenseStatusBadge } from "@/components/employee/ExpenseStatusBadge";
+import {
+  BulkReimburseProvider,
+  ClaimCheckbox,
+  GroupSelectAll,
+} from "@/components/admin/expenses/BulkReimburse";
 import { formatINR } from "@/lib/format";
 import { formatIstDate, istToday } from "@/lib/ist";
 import {
@@ -45,6 +50,8 @@ export default async function ExpenseApprovalsPage({
   const month = params.month ?? istToday().slice(0, 7);
   const rows = await listExpenses(TAB_STATUSES[tab] ?? TAB_STATUSES.pending);
   const groups = groupExpensesByVisit(rows);
+  // Selection only makes sense on the queue of approved-but-unpaid claims.
+  const bulkReimburse = tab === "approved" && groups.length > 0;
 
   return (
     <div className="space-y-6">
@@ -116,7 +123,8 @@ export default async function ExpenseApprovalsPage({
           No expenses here.
         </Card>
       ) : (
-        <div className="space-y-4">
+        <MaybeBulk enabled={bulkReimburse}>
+          <div className="space-y-4">
           {groups.map((g) => (
             <Card key={g.key} className="overflow-hidden p-0">
               {/* Visit header: employee + visit + rolled-up total */}
@@ -153,6 +161,15 @@ export default async function ExpenseApprovalsPage({
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
+                  {bulkReimburse && (
+                    <GroupSelectAll
+                      label={g.employeeName ?? "this group"}
+                      claims={g.claims.map((c) => ({
+                        id: c.id,
+                        amount: c.reimbursable_amount,
+                      }))}
+                    />
+                  )}
                   <div className="text-right">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                       Total reimbursable
@@ -198,6 +215,13 @@ export default async function ExpenseApprovalsPage({
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="min-w-0 space-y-0.5">
                           <div className="flex flex-wrap items-center gap-2">
+                            {bulkReimburse && (
+                              <ClaimCheckbox
+                                id={r.id}
+                                amount={r.reimbursable_amount}
+                                label={`${EXPENSE_CATEGORY_LABELS[r.category] ?? r.category} ${formatINR(r.reimbursable_amount)}`}
+                              />
+                            )}
                             <Badge tone="neutral">
                               {EXPENSE_CATEGORY_LABELS[r.category] ?? r.category}
                             </Badge>
@@ -248,8 +272,25 @@ export default async function ExpenseApprovalsPage({
               </div>
             </Card>
           ))}
-        </div>
+          </div>
+        </MaybeBulk>
       )}
     </div>
+  );
+}
+
+// The provider is a client boundary; the group cards stay server components
+// and pass straight through as children. Off every tab but "To reimburse".
+function MaybeBulk({
+  enabled,
+  children,
+}: {
+  enabled: boolean;
+  children: React.ReactNode;
+}) {
+  return enabled ? (
+    <BulkReimburseProvider>{children}</BulkReimburseProvider>
+  ) : (
+    <>{children}</>
   );
 }

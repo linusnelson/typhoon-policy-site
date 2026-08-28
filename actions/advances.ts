@@ -1,7 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireEmployee, AuthzError } from "@/lib/auth";
+import {
+  requireAdmin,
+  requireEmployee,
+  requireExpenseApprover,
+  AuthzError,
+} from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { moduleEnabled } from "@/lib/data/org";
 import { getAdvanceContext, getLoanPolicySignStatus } from "@/lib/data/advances";
@@ -23,8 +28,13 @@ import { formatINR } from "@/lib/format";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
+// Ceiling on one selective settlement — far above a month's deductions for a
+// <50-person org, and it keeps the .in() filter bounded.
+const BULK_PAID_MAX = 500;
+
 function revalidate(employeeId?: string) {
   revalidatePath("/advances");
+  revalidatePath("/advances/deductions");
   revalidatePath("/admin/advances");
   if (employeeId) revalidatePath(`/admin/employees/${employeeId}`);
 }
@@ -401,11 +411,17 @@ export async function disburseAdvance(
 
 // ── Admin: repayment tracking ────────────────────────────────────────────────
 
+// Recording a deduction that payroll already ran is accounts work, so "paid"
+// is open to approvers (admins pass too). Waiving FORGIVES a debt — that is a
+// decision, not bookkeeping, and stays admin-only. The DB agrees: the approver
+// policy added in clock_bays 20260828000000 pins the transition to
+// scheduled -> paid, so a waive attempt fails at RLS as well as here.
 async function markRepayment(
   id: string,
   toStatus: "paid" | "waived"
 ): Promise<void> {
-  const admin = await requireAdmin();
+  const actor =
+    toStatus === "paid" ? await requireExpenseApprover() : await requireAdmin();
   const supabase = await createClient();
 
   // Only scheduled → paid/waived; the guard makes double-submits no-ops.
@@ -414,7 +430,7 @@ async function markRepayment(
     .update({
       status: toStatus,
       paid_at: toStatus === "paid" ? new Date().toISOString() : null,
-      marked_by: admin.id,
+      marked_by: actor.id,
     })
     .eq("id", id)
     .eq("status", "scheduled")
@@ -442,7 +458,7 @@ export async function waiveRepayment(formData: FormData): Promise<void> {
 // Payroll helper: mark every scheduled installment due in a month as paid
 // (after the deduction actually ran in Zoho).
 export async function bulkMarkMonthPaid(formData: FormData): Promise<void> {
-  const admin = await requireAdmin();
+  const actor = await requireExpenseApprover();
   const month = str(formData, "month");
   if (!month) throw new AuthzError("Missing month.");
   const monthKey = monthStart(month.length === 7 ? `${month}-01` : month);
@@ -450,7 +466,7 @@ export async function bulkMarkMonthPaid(formData: FormData): Promise<void> {
   const supabase = await createClient();
   const { data: updated } = await supabase
     .from("advance_repayments")
-    .update({ status: "paid", paid_at: new Date().toISOString(), marked_by: admin.id })
+    .update({ status: "paid", paid_at: new Date().toISOString(), marked_by: actor.id })
     .eq("due_month", monthKey)
     .eq("status", "scheduled")
     .select("advance_request_id");
@@ -460,6 +476,91 @@ export async function bulkMarkMonthPaid(formData: FormData): Promise<void> {
     await closeIfSettled(supabase, advanceId);
   }
   revalidate();
+}
+
+export interface BulkPaidState extends ActionState {
+  paid?: number;
+  skipped?: number;
+}
+
+// Selective payroll settlement: mark the ticked installments paid. Unlike
+// bulkMarkMonthPaid (which takes the whole month in one shot), this covers the
+// common case where payroll ran the deductions for most people but one or two
+// were held back.
+//
+// Session client, so RLS is the real gate: admins via
+// advance_repayments_update_admin, accounts users via the narrower
+// approver-settle policy (clock_bays 20260828000000). The .eq("status",
+// "scheduled") guard makes a double-submit a no-op rather than a
+// re-stamp — anything already settled simply falls out of the count.
+export async function bulkMarkRepaymentsPaid(
+  _prev: BulkPaidState,
+  formData: FormData
+): Promise<BulkPaidState> {
+  let actor;
+  try {
+    actor = await requireExpenseApprover();
+    await assertModuleOn(actor.org_id);
+  } catch (e) {
+    return { ok: false, error: (e as AuthzError).message };
+  }
+
+  const raw = str(formData, "ids");
+  let ids: string[];
+  try {
+    const parsed = JSON.parse(raw ?? "[]");
+    ids = Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+  } catch {
+    return { ok: false, error: "Could not read the selection." };
+  }
+  if (ids.length === 0) {
+    return { ok: false, error: "Select at least one deduction." };
+  }
+  if (ids.length > BULK_PAID_MAX) {
+    return {
+      ok: false,
+      error: `Too many selected (${ids.length}). Do it in batches of ${BULK_PAID_MAX}.`,
+    };
+  }
+
+  const supabase = await createClient();
+  const { data: updated, error } = await supabase
+    .from("advance_repayments")
+    .update({
+      status: "paid",
+      paid_at: new Date().toISOString(),
+      marked_by: actor.id,
+    })
+    .in("id", ids)
+    .eq("status", "scheduled")
+    .select("id, advance_request_id");
+  if (error) return { ok: false, error: error.message };
+
+  const paid = updated ?? [];
+
+  // A loan whose last installment just landed is now fully repaid — close it
+  // and notify, exactly as the single-row path does.
+  const advanceIds = [
+    ...new Set(paid.map((r) => r.advance_request_id as string)),
+  ];
+  for (const advanceId of advanceIds) {
+    await closeIfSettled(supabase, advanceId);
+  }
+
+  revalidate();
+  const skipped = ids.length - paid.length;
+  return {
+    ok: skipped === 0,
+    paid: paid.length,
+    skipped,
+    ...(skipped === 0
+      ? {
+          message: `Marked ${paid.length} deduction${paid.length === 1 ? "" : "s"} paid.`,
+        }
+      : {
+          error: `Marked ${paid.length} of ${ids.length} paid — ${skipped} had already been settled. Reload to see the current list.`,
+        }),
+  };
 }
 
 // Early payoff: settle every remaining scheduled installment at once.
