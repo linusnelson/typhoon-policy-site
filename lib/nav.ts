@@ -26,6 +26,8 @@ import {
   Receipt,
   ReceiptIndianRupee,
   Megaphone,
+  LayoutGrid,
+  AppWindow,
 } from "lucide-react";
 import { DEFAULT_MODULES, type EmployeeRole, type ModuleKey, type OrgModules } from "@/lib/types";
 
@@ -43,6 +45,9 @@ export interface NavItem {
   // Personal self-serve pages (own attendance, leave, etc.). Hidden for admins
   // and service accounts, who have no personal attendance/leave of their own.
   selfServeOnly?: boolean;
+  // Visible only to employees with at least one application grant
+  // (application_access) and admins — a capability flag like approverOnly.
+  appsOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -93,6 +98,12 @@ const NAV: NavGroup[] = [
         href: "/announcements",
         icon: Megaphone,
         module: "announcements",
+      },
+      {
+        label: "Applications",
+        href: "/applications",
+        icon: LayoutGrid,
+        appsOnly: true,
       },
       { label: "Documents", href: "/documents", icon: FileText },
       { label: "Org map", href: "/org", icon: Network },
@@ -262,6 +273,12 @@ const NAV: NavGroup[] = [
         roles: ["admin"],
         module: "announcements",
       },
+      {
+        label: "App Access",
+        href: "/admin/applications",
+        icon: AppWindow,
+        roles: ["admin"],
+      },
       { label: "Reports", href: "/admin/reports", icon: BarChart3, roles: ["admin"] },
       { label: "Settings", href: "/admin/settings", icon: Settings, roles: ["admin"] },
     ],
@@ -280,11 +297,13 @@ export { Bell };
 // accounts (employees.is_service_account), who have no personal
 // attendance/leave. Kept
 // as an explicit flag (not derived from role) so title lookups can pass false.
+// `hasApplications` shows the Applications launcher (admins always qualify).
 export function navForRole(
   role: EmployeeRole,
   modules: OrgModules = DEFAULT_MODULES,
   isExpenseApprover = false,
-  hideSelfServe = false
+  hideSelfServe = false,
+  hasApplications = false
 ): NavGroup[] {
   return NAV.map((group) => ({
     ...group,
@@ -293,7 +312,8 @@ export function navForRole(
         (!i.roles || i.roles.includes(role)) &&
         (!i.module || modules[i.module]) &&
         (!i.approverOnly || isExpenseApprover || role === "admin") &&
-        (!i.selfServeOnly || !hideSelfServe)
+        (!i.selfServeOnly || !hideSelfServe) &&
+        (!i.appsOnly || hasApplications || role === "admin")
     ),
   })).filter((group) => group.items.length > 0);
 }

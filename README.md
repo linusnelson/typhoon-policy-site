@@ -81,6 +81,28 @@ Shared/role mailboxes that aren't individual people are listed in
 `admin@typhoonelec.com`). They are excluded from required-signer/compliance
 counts and never prompted to sign.
 
+## Applications
+
+Internal tools hosted inside the portal at `/applications/<slug>`, visible only
+to admins and to employees an admin grants on **Admin → App Access** (one row
+per app → open it to add people by name search or remove them; saves
+immediately).
+
+- Catalogue: [lib/apps/registry.ts](lib/apps/registry.ts) (code). Grants:
+  `application_access` table (migration
+  `clock_bays/supabase/migrations/20260916100000_applications.sql`).
+- Guards: every app page calls `requireAppAccessView(slug)`; every app API
+  route calls `requireAppAccess(slug)` — the page guard alone doesn't protect
+  the API.
+- **PriceProbe** (`price-comparator`, ported from `price-comparator-for-tes`):
+  engine in `lib/apps/price-comparator/`, API in `app/api/apps/price-comparator/`.
+  The browser prices one BOM line per request (no in-memory jobs on
+  serverless). Vendor API keys (`price_comparator_settings`) and the 24 h price
+  cache (`price_comparator_cache`) are service-role only; admins set keys under
+  PriceProbe → API keys and the browser only learns whether each key is set.
+  The INR/USD rate is shown on the Compare tab; admins set/clear the org-wide
+  override there and on-screen results re-price client-side (`repriceLine`).
+
 ## Deploy to Vercel (`tes-policy`)
 
 Set env vars per Vercel environment:

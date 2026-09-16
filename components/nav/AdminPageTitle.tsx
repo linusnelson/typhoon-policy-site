@@ -10,7 +10,9 @@ import { DEFAULT_MODULES, type OrgModules } from "@/lib/types";
 const ALL_MODULES_ON = Object.fromEntries(
   Object.keys(DEFAULT_MODULES).map((k) => [k, true])
 ) as OrgModules;
-const ITEMS = navForRole("admin", ALL_MODULES_ON, true).flatMap((g) => g.items);
+const ITEMS = navForRole("admin", ALL_MODULES_ON, true, false, true).flatMap(
+  (g) => g.items
+);
 
 function titleFor(pathname: string): string {
   // Longest matching href wins (e.g. /admin/leave/comp-off over /admin/leave).

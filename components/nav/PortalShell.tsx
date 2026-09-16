@@ -17,6 +17,7 @@ export function PortalShell({
   modules,
   isExpenseApprover = false,
   hideSelfServe = false,
+  hasApplications = false,
   headerRight,
   children,
 }: {
@@ -24,6 +25,7 @@ export function PortalShell({
   modules?: OrgModules;
   isExpenseApprover?: boolean;
   hideSelfServe?: boolean;
+  hasApplications?: boolean;
   headerRight: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -61,6 +63,7 @@ export function PortalShell({
           modules={modules}
           isExpenseApprover={isExpenseApprover}
           hideSelfServe={hideSelfServe}
+          hasApplications={hasApplications}
           collapsed={collapsed}
         />
       </aside>
@@ -89,6 +92,7 @@ export function PortalShell({
               modules={modules}
               isExpenseApprover={isExpenseApprover}
               hideSelfServe={hideSelfServe}
+              hasApplications={hasApplications}
               onNavigate={() => setMobileOpen(false)}
             />
           </aside>

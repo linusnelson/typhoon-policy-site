@@ -32,6 +32,7 @@ export function SidebarNav({
   modules,
   isExpenseApprover = false,
   hideSelfServe = false,
+  hasApplications = false,
   collapsed = false,
   onNavigate,
 }: {
@@ -39,11 +40,18 @@ export function SidebarNav({
   modules?: OrgModules;
   isExpenseApprover?: boolean;
   hideSelfServe?: boolean;
+  hasApplications?: boolean;
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
-  const groups = navForRole(role, modules, isExpenseApprover, hideSelfServe);
+  const groups = navForRole(
+    role,
+    modules,
+    isExpenseApprover,
+    hideSelfServe,
+    hasApplications
+  );
   const best = activeHref(
     pathname,
     groups.flatMap((g) => g.items.map((i) => i.href))

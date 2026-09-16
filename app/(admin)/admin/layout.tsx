@@ -3,6 +3,7 @@ import { getCurrentEmployee } from "@/lib/policies";
 import { isAccessActive } from "@/lib/auth";
 import { getUnreadNotificationCount } from "@/lib/data/notifications";
 import { getOrgModules } from "@/lib/data/org";
+import { listMyAppSlugs } from "@/lib/apps/access";
 import { PortalShell } from "@/components/nav/PortalShell";
 import { NotificationBell } from "@/components/nav/NotificationBell";
 import { UserMenu } from "@/components/nav/UserMenu";
@@ -24,9 +25,10 @@ export default async function AdminLayout({
     redirect(employee.role === "manager" ? "/team/leave" : "/");
   }
 
-  const [unread, modules] = await Promise.all([
+  const [unread, modules, appSlugs] = await Promise.all([
     getUnreadNotificationCount(employee.id),
     getOrgModules(employee.org_id),
+    listMyAppSlugs(employee.id, employee.role),
   ]);
 
   return (
@@ -34,6 +36,7 @@ export default async function AdminLayout({
       role={employee.role}
       modules={modules}
       isExpenseApprover={employee.is_expense_approver}
+      hasApplications={appSlugs.length > 0}
       // Role guard above means the viewer is always an admin here.
       hideSelfServe
       headerRight={

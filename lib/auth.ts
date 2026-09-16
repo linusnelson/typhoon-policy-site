@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getCurrentEmployee } from "@/lib/policies";
+import { hasAppAccess } from "@/lib/apps/access";
 import { istToday } from "@/lib/ist";
 import type { Employee } from "@/lib/types";
 
@@ -72,5 +73,25 @@ export async function requireExpenseApproverView(): Promise<Employee> {
   const employee = await getCurrentEmployee();
   if (!employee || !isAccessActive(employee)) redirect("/login");
   if (employee.role !== "admin" && !employee.is_expense_approver) redirect("/");
+  return employee;
+}
+
+// Applications (/applications/<slug>): admins, plus employees an admin has
+// granted (application_access). Route handlers use the throwing form — every
+// handler must call it, the page guard alone doesn't protect the API.
+export async function requireAppAccess(slug: string): Promise<Employee> {
+  const employee = await requireEmployee();
+  if (!(await hasAppAccess(employee, slug))) {
+    throw new AuthzError("You don't have access to this application.");
+  }
+  return employee;
+}
+
+// Page-guard variant for an app's layout. 404 (not a redirect) so the app's
+// existence isn't advertised to employees without a grant.
+export async function requireAppAccessView(slug: string): Promise<Employee> {
+  const employee = await getCurrentEmployee();
+  if (!employee || !isAccessActive(employee)) redirect("/login");
+  if (!(await hasAppAccess(employee, slug))) notFound();
   return employee;
 }
