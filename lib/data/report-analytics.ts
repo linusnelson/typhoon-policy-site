@@ -62,7 +62,9 @@ export interface ReportAnalytics {
   leaveByDept: LeaveDeptStat[];
 }
 
-const PRESENT_STATUSES = new Set(["Present", "Late", "Half Day"]);
+// "Partial" replaced "Half Day" when the day-parts engine landed: some part of
+// the day went unfilled, but the person did show up.
+const PRESENT_STATUSES = new Set(["Present", "Late", "Partial", "Half Day"]);
 const ABSENT_STATUSES = new Set(["Absent", "LOP"]);
 
 function rate(num: number, den: number): number {

@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { istDateKey, istMinutesOfDay, istDayBoundsUtc } from "@/lib/ist";
-import { fyStartYearFromKey } from "@/lib/leave-year";
+import { istMinutesOfDay } from "@/lib/ist";
 import type {
   DailyAttendanceRow,
   MonthlySummaryRow,
@@ -9,49 +8,22 @@ import type {
   DailyRangeRow,
   DayCell,
 } from "@/lib/data/report-types";
+import { DAY_LABEL_STATUS } from "@/lib/data/report-types";
+import {
+  enumerateDates,
+  loadClassifyContext,
+  type ClassifyContext,
+  type EmpLike,
+} from "@/lib/data/day-inputs";
+import type { DayResult } from "@/lib/engine/day-parts";
 
-// Faithful port of clock_bays ReportRepository. RLS scopes every query to the
-// caller's org (admins org-wide, managers their team), so we omit explicit
-// org_id filters. Go-live date is not applied here (consistent with the web
-// dashboard); date_of_joining is the effective employee start.
-
-const DEFAULT_LATE = 15;
-const DEFAULT_SHIFT_START = 9 * 60; // 09:00
+// Attendance reports. Every status here comes from the shared day-parts engine
+// (lib/engine/day-parts.ts) — the same classifier the muster, the employee
+// month view and the Flutter app run. RLS scopes every query to the caller's
+// org (admins org-wide, managers their team), so we omit explicit org_id
+// filters. date_of_joining / relieving_date bound each employee's period.
 
 // ── Date-key helpers (calendar math on "YYYY-MM-DD") ─────────────────────────
-
-// 0 = Sun … 6 = Sat
-function weekdayOf(key: string): number {
-  return new Date(`${key}T00:00:00Z`).getUTCDay();
-}
-
-function addDays(key: string, n: number): string {
-  const d = new Date(`${key}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
-function enumerateDates(from: string, to: string): string[] {
-  const out: string[] = [];
-  for (let d = from; d <= to; d = addDays(d, 1)) out.push(d);
-  return out;
-}
-
-// Working days: Mon–Fri = 1, Sat = 0.5, Sun = 0.
-function workingDaysBetween(from: string, to: string): number {
-  let count = 0;
-  for (let d = from; d <= to; d = addDays(d, 1)) {
-    const wd = weekdayOf(d);
-    if (wd >= 1 && wd <= 5) count += 1;
-    else if (wd === 6) count += 0.5;
-  }
-  return count;
-}
-
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(":");
-  return Number(h) * 60 + Number(m);
-}
 
 function hhmm(iso: string): string {
   const mins = istMinutesOfDay(iso);
@@ -60,21 +32,35 @@ function hhmm(iso: string): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
-function todayKey(): string {
-  return istDateKey(new Date());
+// Worked hours for a day: punched time plus client-visit time that produced no
+// punches. When the visit WAS punched (work_type client_visit) both measure the
+// same stretch, so take the larger rather than summing.
+function dayHours(ctx: ClassifyContext, employeeId: string, dateKey: string, r: DayResult): number {
+  const visitMins = ctx.visitMinutesOn(employeeId, dateKey);
+  const punchedVisit = ctx
+    .sessionsOn(employeeId, dateKey)
+    .some((s) => s.workType === "client_visit");
+  const mins = punchedVisit
+    ? Math.max(r.workedMinutes, visitMins)
+    : r.workedMinutes + visitMins;
+  return mins / 60;
 }
 
 // ── Shared lookups ───────────────────────────────────────────────────────────
 
-type EmpRow = {
+type EmpRow = EmpLike & {
   id: string;
   employee_code: string | null;
   name: string | null;
   department_id: string | null;
   location_id: string | null;
+  shift_id: string | null;
   date_of_joining: string | null;
   relieving_date: string | null;
 };
+
+const EMPLOYEE_SELECT =
+  "id, employee_code, name, department_id, location_id, shift_id, date_of_joining, relieving_date";
 
 interface Filters {
   locationId?: string | null;
@@ -85,13 +71,9 @@ interface Filters {
 }
 
 async function loadRefs(supabase: Awaited<ReturnType<typeof createClient>>) {
-  const [{ data: depts }, { data: locs }, { data: shifts }] = await Promise.all([
+  const [{ data: depts }, { data: locs }] = await Promise.all([
     supabase.from("departments").select("id, name"),
     supabase.from("locations").select("id, name"),
-    supabase
-      .from("shifts")
-      .select("start_time, end_time, break_minutes, saturday_half_day, saturday_end_time")
-      .limit(1),
   ]);
   const deptMap = new Map<string, string>(
     (depts ?? []).map((d) => [d.id as string, d.name as string])
@@ -99,30 +81,7 @@ async function loadRefs(supabase: Awaited<ReturnType<typeof createClient>>) {
   const locMap = new Map<string, string>(
     (locs ?? []).map((l) => [l.id as string, l.name as string])
   );
-  const shift = shifts && shifts.length > 0 ? shifts[0] : null;
-  const shiftStart = shift?.start_time
-    ? timeToMinutes(shift.start_time as string)
-    : DEFAULT_SHIFT_START;
-  const shiftEnd = shift?.end_time
-    ? timeToMinutes(shift.end_time as string)
-    : DEFAULT_SHIFT_START + 9 * 60;
-  const satHalf = (shift?.saturday_half_day as boolean | null) ?? true;
-  const satEnd = shift?.saturday_end_time
-    ? timeToMinutes(shift.saturday_end_time as string)
-    : 13 * 60;
-  const breakMin = (shift?.break_minutes as number | null) ?? 0;
-  // Effective shift duration in hours for a weekday — the OT baseline
-  // (mirrors clock_bays AttendanceEngine: end − start − break, with the
-  // Saturday short end when the shift has Saturday half-days).
-  const shiftHours = (weekday: number): number => {
-    const end = weekday === 6 && satHalf ? satEnd : shiftEnd;
-    return Math.max(0, (end - shiftStart - breakMin) / 60);
-  };
-  // Muster summary weight: Sunday 0, Saturday 0.5 (when the shift has
-  // Saturday half-days), everything else 1.
-  const dayWeight = (weekday: number): number =>
-    weekday === 0 ? 0 : weekday === 6 && satHalf ? 0.5 : 1;
-  return { deptMap, locMap, shiftStart, shiftHours, dayWeight };
+  return { deptMap, locMap };
 }
 
 function buildEmployeeQuery(
@@ -134,9 +93,7 @@ function buildEmployeeQuery(
   // report clamps or filters rows to its own period.
   let q = supabase
     .from("employees")
-    .select(
-      "id, employee_code, name, department_id, location_id, date_of_joining, relieving_date"
-    )
+    .select(EMPLOYEE_SELECT)
     .or("status.eq.active,relieving_date.not.is.null")
     .neq("role", "admin")
     .eq("is_service_account", false);
@@ -146,62 +103,6 @@ function buildEmployeeQuery(
   return q;
 }
 
-// Per-department attendance thresholds with an org-wide fallback (a policy
-// row with department_id NULL), then hard defaults. The half/full-day hour
-// fields are the admin-configured values from attendance_policies — the
-// single source of truth shared with the clock_bays AttendanceEngine.
-interface PolicyThresholds {
-  late: number;
-  halfMin: number;
-  fullMin: number;
-}
-
-type PolicyRow = {
-  department_id: string | null;
-  late_threshold_min: number | null;
-  half_day_min_hours: number | null;
-  full_day_min_hours: number | null;
-};
-
-const POLICY_SELECT =
-  "department_id, late_threshold_min, half_day_min_hours, full_day_min_hours";
-
-function policyThresholds(policies: PolicyRow[]): (deptId: string | null) => PolicyThresholds {
-  const toThresholds = (p: PolicyRow | undefined, base: PolicyThresholds): PolicyThresholds => ({
-    late: p?.late_threshold_min ?? base.late,
-    halfMin: p?.half_day_min_hours ?? base.halfMin,
-    fullMin: p?.full_day_min_hours ?? base.fullMin,
-  });
-  const defaults: PolicyThresholds = { late: DEFAULT_LATE, halfMin: 4, fullMin: 8 };
-  const orgWide = toThresholds(
-    policies.find((p) => p.department_id === null),
-    defaults
-  );
-  const byDept = new Map<string, PolicyThresholds>();
-  for (const p of policies) {
-    if (p.department_id) byDept.set(p.department_id, toThresholds(p, orgWide));
-  }
-  return (deptId) => (deptId ? byDept.get(deptId) ?? orgWide : orgWide);
-}
-
-function usableLeaveMap(
-  balances: {
-    employee_id: string | null;
-    earned: number | null;
-    used: number | null;
-    carried_forward: number | null;
-  }[]
-): Map<string, number> {
-  const m = new Map<string, number>();
-  for (const b of balances) {
-    if (!b.employee_id) continue;
-    const bal =
-      (b.earned ?? 0) + (b.carried_forward ?? 0) - (b.used ?? 0);
-    m.set(b.employee_id, (m.get(b.employee_id) ?? 0) + bal);
-  }
-  return m;
-}
-
 // ── Daily attendance (single date) ───────────────────────────────────────────
 
 export async function dailyAttendance(
@@ -209,70 +110,13 @@ export async function dailyAttendance(
   f: Filters = {}
 ): Promise<DailyAttendanceRow[]> {
   const supabase = await createClient();
-  const { startUtc, endUtc } = istDayBoundsUtc(dateKey);
-  const year = fyStartYearFromKey(dateKey);
 
-  const [
-    { data: emps },
-    refs,
-    { data: punches },
-    { data: leaves },
-    { data: policies },
-    { data: balances },
-    { data: marks },
-  ] = await Promise.all([
+  const [{ data: emps }, refs, ctx] = await Promise.all([
     buildEmployeeQuery(supabase, f),
     loadRefs(supabase),
-    supabase
-      .from("attendance_punches")
-      .select("employee_id, punch_type, work_type, punched_at")
-      .gte("punched_at", startUtc)
-      .lt("punched_at", endUtc),
-    supabase
-      .from("leave_requests")
-      .select("employee_id")
-      .in("status", ["pending", "approved"])
-      .lte("start_date", dateKey)
-      .gte("end_date", dateKey),
-    supabase.from("attendance_policies").select(POLICY_SELECT),
-    supabase
-      .from("leave_balances")
-      .select("employee_id, earned, used, carried_forward")
-      .eq("year", year),
-    supabase
-      .from("regularization_log")
-      .select("employee_id")
-      .eq("punch_date", dateKey)
-      .is("corrected_in", null),
+    loadClassifyContext(supabase, dateKey, dateKey),
   ]);
-
-  // Field days create no attendance punches — a client check-in (scheduled or
-  // ad-hoc) is the presence proof, so fetch it separately.
-  const { data: dayVisits } = await supabase
-    .from("client_visits")
-    .select("employee_id, check_in_at")
-    .eq("visit_date", dateKey)
-    .not("check_in_at", "is", null);
-  const visitCheckedIn = new Set(
-    (dayVisits ?? []).map((v) => v.employee_id as string)
-  );
-
-  const { deptMap, locMap, shiftStart } = refs;
-  const policyFor = policyThresholds((policies ?? []) as PolicyRow[]);
-  const usableLeave = usableLeaveMap(balances ?? []);
-  const onLeave = new Set((leaves ?? []).map((l) => l.employee_id as string));
-  const markedAbsent = new Set(
-    (marks ?? []).map((r) => r.employee_id as string).filter(Boolean)
-  );
-
-  const punchIn = new Map<string, { work_type: string | null; punched_at: string }>();
-  const punchOut = new Map<string, { punched_at: string }>();
-  for (const p of punches ?? []) {
-    const eid = p.employee_id as string;
-    if (p.punch_type === "in")
-      punchIn.set(eid, { work_type: p.work_type as string | null, punched_at: p.punched_at as string });
-    if (p.punch_type === "out") punchOut.set(eid, { punched_at: p.punched_at as string });
-  }
+  const { deptMap, locMap } = refs;
 
   const rows: DailyAttendanceRow[] = ((emps as EmpRow[] | null) ?? [])
     .filter(
@@ -282,57 +126,31 @@ export async function dailyAttendance(
     )
     .map((emp) => {
       const eid = emp.id;
-      const pol = policyFor(emp.department_id);
-      const grace = pol.late;
-      const pin = punchIn.get(eid);
-      const pout = punchOut.get(eid);
-
-      let status: string;
-      let workType = "";
-      let punchInStr = "";
-      let punchOutStr = "";
-      let workedHours = 0;
-      let isLate = false;
-
-      if (onLeave.has(eid)) {
-        status = "On Leave";
-      } else if (!pin) {
-        if (visitCheckedIn.has(eid)) {
-          // Out in the field: a client check-in is the day's presence proof.
-          status = "Present";
-          workType = "client_visit";
-        } else if (markedAbsent.has(eid)) {
-          status = (usableLeave.get(eid) ?? 1) <= 0 ? "LOP" : "Absent";
-        } else {
-          status = "No Punch";
-        }
-      } else {
-        punchInStr = hhmm(pin.punched_at);
-        workType = pin.work_type ?? "";
-        isLate = istMinutesOfDay(pin.punched_at) > shiftStart + grace;
-        if (pout) {
-          punchOutStr = hhmm(pout.punched_at);
-          workedHours =
-            (new Date(pout.punched_at).getTime() - new Date(pin.punched_at).getTime()) /
-            3_600_000;
-        }
-        if (!pout) status = "Incomplete";
-        else if (workedHours > 0 && workedHours < pol.fullMin) status = "Half Day";
-        else if (isLate) status = "Late";
-        else status = "Present";
-      }
+      const r = ctx.classify(emp, dateKey);
+      // All sessions, not just the first pair: a two-session day with a real
+      // lunch gap reads first-in → last-out, never 09:30 → 13:30.
+      const sessions = ctx.sessionsOn(eid, dateKey);
+      const closed = sessions.filter((s) => s.outIso !== null);
+      const last = closed[closed.length - 1] ?? null;
+      const workType =
+        sessions[0]?.workType ??
+        (r.parts.includes("field")
+          ? "client_visit"
+          : r.parts.includes("event")
+            ? "event"
+            : "");
 
       return {
         employeeCode: emp.employee_code ?? "—",
         employeeName: emp.name ?? eid,
         department: deptMap.get(emp.department_id ?? "") ?? "—",
         location: locMap.get(emp.location_id ?? "") ?? "—",
-        status,
+        status: DAY_LABEL_STATUS[r.label],
         workType,
-        punchIn: punchInStr,
-        punchOut: punchOutStr,
-        workedHours,
-        isLate,
+        punchIn: sessions[0] ? hhmm(sessions[0].inIso) : "",
+        punchOut: last?.outIso ? hhmm(last.outIso) : "",
+        workedHours: dayHours(ctx, eid, dateKey, r),
+        isLate: r.isLate,
       };
     })
     .sort((a, b) => a.employeeName.localeCompare(b.employeeName));
@@ -348,209 +166,86 @@ async function periodSummary(
   f: Filters
 ): Promise<MonthlySummaryRow[]> {
   const supabase = await createClient();
-  const startUtc = istDayBoundsUtc(fromKey).startUtc;
-  const endUtc = istDayBoundsUtc(toKey).endUtc;
-  const year = fyStartYearFromKey(fromKey);
-  const today = todayKey();
-  const workingDaysEnd = toKey > today ? today : toKey;
 
-  const [
-    { data: emps },
-    refs,
-    { data: punches },
-    { data: leaves },
-    { data: visits },
-    { data: policies },
-    { data: balances },
-  ] = await Promise.all([
+  const [{ data: emps }, refs, ctx] = await Promise.all([
     buildEmployeeQuery(supabase, f),
     loadRefs(supabase),
-    supabase
-      .from("attendance_punches")
-      .select("employee_id, punch_type, work_type, punched_at")
-      .gte("punched_at", startUtc)
-      .lt("punched_at", endUtc),
-    supabase
-      .from("leave_requests")
-      .select("employee_id, start_date, end_date")
-      .in("status", ["pending", "approved"])
-      .lte("start_date", toKey)
-      .gte("end_date", fromKey),
-    supabase
-      .from("client_visits")
-      .select("employee_id, visit_date, check_in_at, check_out_at")
-      .gte("visit_date", fromKey)
-      .lte("visit_date", toKey),
-    supabase.from("attendance_policies").select(POLICY_SELECT),
-    supabase
-      .from("leave_balances")
-      .select("employee_id, earned, used, carried_forward")
-      .eq("year", year),
+    loadClassifyContext(supabase, fromKey, toKey),
   ]);
-
-  const { deptMap, locMap, shiftStart, shiftHours, dayWeight } = refs;
-  const policyFor = policyThresholds((policies ?? []) as PolicyRow[]);
-  const usableLeave = usableLeaveMap(balances ?? []);
-
-  // punches grouped by employee → date key
-  const byEmpDate = new Map<string, Map<string, { punch_type: string; work_type: string | null; punched_at: string }[]>>();
-  for (const p of punches ?? []) {
-    const eid = p.employee_id as string;
-    const key = istDateKey(p.punched_at as string);
-    const days = byEmpDate.get(eid) ?? new Map();
-    const list = days.get(key) ?? [];
-    list.push({
-      punch_type: p.punch_type as string,
-      work_type: p.work_type as string | null,
-      punched_at: p.punched_at as string,
-    });
-    days.set(key, list);
-    byEmpDate.set(eid, days);
-  }
-
-  // leave days per employee — Sat = 0.5, weekday = 1, Sun skip
-  const leaveDaysMap = new Map<string, number>();
-  for (const l of leaves ?? []) {
-    const eid = l.employee_id as string;
-    let s = l.start_date as string;
-    let e = l.end_date as string;
-    if (s < fromKey) s = fromKey;
-    if (e > toKey) e = toKey;
-    let days = 0;
-    for (let d = s; d <= e; d = addDays(d, 1)) {
-      const wd = weekdayOf(d);
-      if (wd >= 1 && wd <= 5) days += 1;
-      else if (wd === 6) days += 0.5;
-    }
-    leaveDaysMap.set(eid, (leaveDaysMap.get(eid) ?? 0) + days);
-  }
-
-  const visitCount = new Map<string, number>();
-  const visitHours = new Map<string, number>();
-  const visitDates = new Map<string, Set<string>>();
-  for (const v of visits ?? []) {
-    const eid = v.employee_id as string;
-    visitCount.set(eid, (visitCount.get(eid) ?? 0) + 1);
-    // Only a checked-in visit is a field day — a scheduled-but-never-executed
-    // visit is a missed schedule, not attendance.
-    if (v.visit_date && v.check_in_at) {
-      const set = visitDates.get(eid) ?? new Set();
-      set.add(v.visit_date as string);
-      visitDates.set(eid, set);
-    }
-    if (v.check_in_at && v.check_out_at) {
-      const dur =
-        (new Date(v.check_out_at as string).getTime() -
-          new Date(v.check_in_at as string).getTime()) /
-        3_600_000;
-      visitHours.set(eid, (visitHours.get(eid) ?? 0) + dur);
-    }
-  }
+  const { deptMap, locMap } = refs;
+  const dates = enumerateDates(fromKey, toKey);
+  const round1 = (n: number) => Math.round(n * 10) / 10;
+  const round2 = (n: number) => Math.round(n * 100) / 100;
 
   return ((emps as EmpRow[] | null) ?? [])
     // Leavers who exited before the period contribute nothing — drop the row.
     .filter((e) => !e.relieving_date || e.relieving_date >= fromKey)
     .map((emp) => {
       const eid = emp.id;
-      const pol = policyFor(emp.department_id);
-      const grace = pol.late;
-      const empPunches = byEmpDate.get(eid) ?? new Map();
 
+      // Fractional day units straight from the engine: a weekday weighs 1, a
+      // Saturday 0.5, and half/quarter parts contribute their share.
       let presentDays = 0;
+      let leaveDays = 0;
+      let absentDays = 0;
+      let lopDays = 0;
       let officeDays = 0;
       let wfhDays = 0;
+      let fieldDays = 0;
       let eventDays = 0;
       let lateDays = 0;
-      let halfDays = 0;
+      let partialDays = 0;
       let incompleteDays = 0;
       let totalHours = 0;
       let otHours = 0;
-      const punchFieldDates = new Set<string>();
+      let visitCount = 0;
 
-      for (const [dateKey, dayPunches] of empPunches as Map<string, { punch_type: string; work_type: string | null; punched_at: string }[]>) {
-        const pin = dayPunches.find((p) => p.punch_type === "in");
-        const pout = dayPunches.find((p) => p.punch_type === "out");
-        if (!pin) continue;
+      for (const dateKey of dates) {
+        if (emp.date_of_joining && dateKey < emp.date_of_joining) continue;
+        if (emp.relieving_date && dateKey > emp.relieving_date) continue;
 
-        presentDays += dayWeight(weekdayOf(dateKey));
+        const r = ctx.classify(emp, dateKey);
+        presentDays += r.units.present;
+        leaveDays += r.units.leave;
+        absentDays += r.units.absent;
+        // The fallback status is uniform per day, so absent units on a day
+        // that has any LOP part are all unpaid.
+        if (r.parts.includes("lop")) lopDays += r.units.absent;
 
-        switch (pin.work_type ?? "office") {
-          case "wfh":
-            wfhDays++;
-            break;
-          case "client_visit":
-            punchFieldDates.add(dateKey);
-            break;
-          case "event":
-            eventDays++;
-            break;
-          default:
-            officeDays++;
-        }
+        if (r.parts.includes("office")) officeDays++;
+        if (r.parts.includes("wfh")) wfhDays++;
+        if (r.parts.includes("field")) fieldDays++;
+        if (r.parts.includes("event")) eventDays++;
+        if (r.isLate) lateDays++;
+        if (r.label === "partial") partialDays++;
+        if (r.isIncomplete) incompleteDays++;
 
-        if (istMinutesOfDay(pin.punched_at) > shiftStart + grace) lateDays++;
-
-        if (!pout) {
-          incompleteDays++;
-        } else {
-          let hours =
-            (new Date(pout.punched_at).getTime() - new Date(pin.punched_at).getTime()) /
-            3_600_000;
-          if (pin.work_type === "client_visit" && (visitHours.get(eid) ?? 0) > 0) {
-            hours = visitHours.get(eid)!;
-          }
-          totalHours += hours;
-          if (hours > 0 && hours < pol.fullMin) halfDays++;
-          // OT baseline = the shift's effective duration for that weekday
-          // (Saturday uses the short end), matching the app's engine — not a
-          // hardcoded 8h, which produced phantom OT on longer shifts.
-          const otBase = shiftHours(weekdayOf(dateKey));
-          if (otBase > 0 && hours > otBase) otHours += hours - otBase;
-        }
+        // That DAY's visit hours — the old code credited an employee's whole
+        // period of visit hours to every single field day.
+        totalHours += dayHours(ctx, eid, dateKey, r);
+        otHours += r.overtimeMinutes / 60;
+        visitCount += ctx.visitCountOn(eid, dateKey);
       }
-
-      // Field days without punches still count as present — the client
-      // check-in is the presence proof (visits never create punches).
-      for (const d of visitDates.get(eid) ?? []) {
-        if (!empPunches.has(d)) presentDays += dayWeight(weekdayOf(d));
-      }
-
-      const leaveDays = leaveDaysMap.get(eid) ?? 0;
-      const effStart = emp.date_of_joining && emp.date_of_joining > fromKey ? emp.date_of_joining : fromKey;
-      const effEnd =
-        emp.relieving_date && emp.relieving_date < workingDaysEnd
-          ? emp.relieving_date
-          : workingDaysEnd;
-      const empWorkingDays =
-        effEnd < effStart ? 0 : workingDaysBetween(effStart, effEnd);
-      const absentDays = Math.min(
-        Math.max(empWorkingDays - presentDays - leaveDays, 0),
-        empWorkingDays
-      );
-      const lopDays = (usableLeave.get(eid) ?? 1) <= 0 ? Math.round(absentDays) : 0;
-
-      const fieldUnion = new Set(punchFieldDates);
-      for (const d of visitDates.get(eid) ?? []) fieldUnion.add(d);
 
       return {
         employeeCode: emp.employee_code ?? "—",
         employeeName: emp.name ?? eid,
         department: deptMap.get(emp.department_id ?? "") ?? "—",
         location: locMap.get(emp.location_id ?? "") ?? "—",
-        presentDays,
+        presentDays: round2(presentDays),
         officeDays,
         wfhDays,
-        fieldDays: fieldUnion.size,
+        fieldDays,
         eventDays,
-        absentDays,
-        leaveDays,
+        absentDays: round2(absentDays),
+        leaveDays: round2(leaveDays),
         lateDays,
-        halfDays,
+        halfDays: partialDays,
         incompleteDays,
-        lopDays,
-        totalWorkedHours: Number(totalHours.toFixed(1)),
-        overtimeHours: Number(otHours.toFixed(1)),
-        visitCount: visitCount.get(eid) ?? 0,
+        lopDays: round2(lopDays),
+        totalWorkedHours: round1(totalHours),
+        overtimeHours: round1(otHours),
+        visitCount,
       };
     })
     .sort((a, b) => a.employeeName.localeCompare(b.employeeName));
@@ -736,80 +431,14 @@ export async function dailyRange(
   f: Filters = {}
 ): Promise<{ rows: DailyRangeRow[]; dates: string[] }> {
   const supabase = await createClient();
-  const startUtc = istDayBoundsUtc(fromKey).startUtc;
-  const endUtc = istDayBoundsUtc(toKey).endUtc;
-  const year = fyStartYearFromKey(fromKey);
 
-  const [
-    { data: emps },
-    refs,
-    { data: punches },
-    { data: leaves },
-    { data: policies },
-    { data: balances },
-  ] = await Promise.all([
+  const [{ data: emps }, refs, ctx] = await Promise.all([
     buildEmployeeQuery(supabase, f),
     loadRefs(supabase),
-    supabase
-      .from("attendance_punches")
-      .select("employee_id, punch_type, work_type, punched_at")
-      .gte("punched_at", startUtc)
-      .lt("punched_at", endUtc),
-    supabase
-      .from("leave_requests")
-      .select("employee_id, start_date, end_date")
-      .in("status", ["pending", "approved"])
-      .lte("start_date", toKey)
-      .gte("end_date", fromKey),
-    supabase.from("attendance_policies").select(POLICY_SELECT),
-    supabase
-      .from("leave_balances")
-      .select("employee_id, earned, used, carried_forward")
-      .eq("year", year),
+    loadClassifyContext(supabase, fromKey, toKey),
   ]);
-
-  // Field days create no punches — a client check-in is the presence proof.
-  const { data: rangeVisits } = await supabase
-    .from("client_visits")
-    .select("employee_id, visit_date, check_in_at")
-    .gte("visit_date", fromKey)
-    .lte("visit_date", toKey)
-    .not("check_in_at", "is", null);
-  const visitByEmp = new Map<string, Set<string>>();
-  for (const v of rangeVisits ?? []) {
-    const eid = v.employee_id as string;
-    const set = visitByEmp.get(eid) ?? new Set<string>();
-    set.add(v.visit_date as string);
-    visitByEmp.set(eid, set);
-  }
-
-  const { deptMap, locMap, shiftStart } = refs;
-  const policyFor = policyThresholds((policies ?? []) as PolicyRow[]);
-  const usableLeave = usableLeaveMap(balances ?? []);
+  const { deptMap, locMap } = refs;
   const dates = enumerateDates(fromKey, toKey);
-
-  const byEmpDate = new Map<string, Map<string, { punch_type: string; punched_at: string }[]>>();
-  for (const p of punches ?? []) {
-    const eid = p.employee_id as string;
-    const key = istDateKey(p.punched_at as string);
-    const days = byEmpDate.get(eid) ?? new Map();
-    const list = days.get(key) ?? [];
-    list.push({ punch_type: p.punch_type as string, punched_at: p.punched_at as string });
-    days.set(key, list);
-    byEmpDate.set(eid, days);
-  }
-
-  const onLeaveByDate = new Map<string, Set<string>>();
-  for (const l of leaves ?? []) {
-    const eid = l.employee_id as string;
-    for (let d = l.start_date as string; d <= (l.end_date as string); d = addDays(d, 1)) {
-      if (d >= fromKey && d <= toKey) {
-        const set = onLeaveByDate.get(d) ?? new Set();
-        set.add(eid);
-        onLeaveByDate.set(d, set);
-      }
-    }
-  }
 
   const rows = ((emps as EmpRow[] | null) ?? [])
     .filter(
@@ -819,9 +448,6 @@ export async function dailyRange(
     )
     .map((emp) => {
       const eid = emp.id;
-      const pol = policyFor(emp.department_id);
-      const grace = pol.late;
-      const empPunches = byEmpDate.get(eid) ?? new Map();
       const byDate: Record<string, DayCell> = {};
 
       for (const dateKey of dates) {
@@ -834,53 +460,16 @@ export async function dailyRange(
           byDate[dateKey] = { status: "Not Employed", punchIn: "", punchOut: "", workedHours: 0 };
           continue;
         }
-        if (onLeaveByDate.get(dateKey)?.has(eid)) {
-          byDate[dateKey] = { status: "On Leave", punchIn: "", punchOut: "", workedHours: 0 };
-          continue;
-        }
-        const dayPunches: { punch_type: string; punched_at: string }[] =
-          empPunches.get(dateKey) ?? [];
-        const pin = dayPunches.find((p) => p.punch_type === "in");
-        const pout = dayPunches.find((p) => p.punch_type === "out");
 
-        if (!pin) {
-          if (visitByEmp.get(eid)?.has(dateKey)) {
-            // Out in the field: client check-in = present, no punches exist.
-            byDate[dateKey] = { status: "Present", punchIn: "", punchOut: "", workedHours: 0 };
-          } else {
-            byDate[dateKey] = {
-              status: (usableLeave.get(eid) ?? 1) <= 0 ? "LOP" : "Absent",
-              punchIn: "",
-              punchOut: "",
-              workedHours: 0,
-            };
-          }
-          continue;
-        }
-        const isLate = istMinutesOfDay(pin.punched_at) > shiftStart + grace;
-        if (!pout) {
-          byDate[dateKey] = {
-            status: "Incomplete",
-            punchIn: hhmm(pin.punched_at),
-            punchOut: "",
-            workedHours: 0,
-          };
-          continue;
-        }
-        const workedHours =
-          (new Date(pout.punched_at).getTime() - new Date(pin.punched_at).getTime()) /
-          3_600_000;
-        const status =
-          workedHours > 0 && workedHours < pol.fullMin
-            ? "Half Day"
-            : isLate
-              ? "Late"
-              : "Present";
+        const r = ctx.classify(emp, dateKey);
+        const sessions = ctx.sessionsOn(eid, dateKey);
+        const closed = sessions.filter((s) => s.outIso !== null);
+        const last = closed[closed.length - 1] ?? null;
         byDate[dateKey] = {
-          status,
-          punchIn: hhmm(pin.punched_at),
-          punchOut: hhmm(pout.punched_at),
-          workedHours,
+          status: DAY_LABEL_STATUS[r.label],
+          punchIn: sessions[0] ? hhmm(sessions[0].inIso) : "",
+          punchOut: last?.outIso ? hhmm(last.outIso) : "",
+          workedHours: dayHours(ctx, eid, dateKey, r),
         };
       }
 

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { istToday } from "@/lib/ist";
 import { fyStartYearFromKey } from "@/lib/leave-year";
+import { DEFAULT_SHIFT, type ShiftTimes } from "@/lib/engine/day-parts";
 
 // Employee self-serve leave data. RLS scopes every query to the signed-in
 // employee. Mirrors clock_bays LeaveRepository.myBalances / myRequests.
@@ -29,6 +30,7 @@ export interface MyLeaveRequest {
   endDate: string;
   daysCount: number;
   durationType: string;
+  quarterSlot: number | null; // quarter_day only: which day part (1–4)
   status: string;
   reason: string;
   adminComment: string | null;
@@ -116,6 +118,67 @@ export interface ApplyLeaveType {
 export interface ApplyLeaveContext {
   types: ApplyLeaveType[];
   holidays: string[]; // "YYYY-MM-DD"[] for the next 12 months
+  shift: ShiftTimes; // for the quarter-day part windows + Saturday rules
+}
+
+function timeToMinutes(t: string | null | undefined): number | null {
+  if (!t) return null;
+  const [h, m] = t.split(":");
+  const n = Number(h) * 60 + Number(m ?? 0);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * The employee's shift as the day-parts engine wants it: their own shift, else
+ * the org default, else any shift, else the policy §1.3 hours. Used to value
+ * half/quarter leave and to label the four day parts.
+ */
+export async function getEmployeeShift(employeeId: string): Promise<ShiftTimes> {
+  const supabase = await createClient();
+  const cols = "start_time, end_time, break_minutes, saturday_half_day, saturday_end_time";
+
+  const { data: emp } = await supabase
+    .from("employees")
+    .select("shift_id")
+    .eq("id", employeeId)
+    .maybeSingle();
+
+  type Row = {
+    start_time: string | null;
+    end_time: string | null;
+    break_minutes: number | null;
+    saturday_half_day: boolean | null;
+    saturday_end_time: string | null;
+  };
+  let row: Row | null = null;
+
+  const shiftId = (emp?.shift_id as string | null) ?? null;
+  if (shiftId) {
+    const { data } = await supabase.from("shifts").select(cols).eq("id", shiftId).maybeSingle();
+    row = (data as Row | null) ?? null;
+  }
+  if (!row) {
+    const { data } = await supabase
+      .from("shifts")
+      .select(cols)
+      .eq("is_default", true)
+      .limit(1)
+      .maybeSingle();
+    row = (data as Row | null) ?? null;
+  }
+  if (!row) {
+    const { data } = await supabase.from("shifts").select(cols).limit(1).maybeSingle();
+    row = (data as Row | null) ?? null;
+  }
+  if (!row) return DEFAULT_SHIFT;
+
+  return {
+    startMin: timeToMinutes(row.start_time) ?? DEFAULT_SHIFT.startMin,
+    endMin: timeToMinutes(row.end_time) ?? DEFAULT_SHIFT.endMin,
+    breakMin: row.break_minutes ?? DEFAULT_SHIFT.breakMin,
+    saturdayHalfDay: row.saturday_half_day ?? DEFAULT_SHIFT.saturdayHalfDay,
+    saturdayEndMin: timeToMinutes(row.saturday_end_time) ?? DEFAULT_SHIFT.saturdayEndMin,
+  };
 }
 
 // Everything the apply-leave form needs: employee-visible types with their
@@ -128,7 +191,7 @@ export async function getApplyLeaveContext(
   const today = istToday();
   const yearAhead = `${Number(today.slice(0, 4)) + 1}${today.slice(4)}`;
 
-  const [{ data: types }, { data: policies }, { data: holidays }, balances] =
+  const [{ data: types }, { data: policies }, { data: holidays }, balances, shift] =
     await Promise.all([
       supabase.from("leave_types").select("id, code, name").eq("is_active", true),
       supabase
@@ -142,6 +205,7 @@ export async function getApplyLeaveContext(
         .gte("date", today)
         .lte("date", yearAhead),
       getMyLeaveBalances(employeeId),
+      getEmployeeShift(employeeId),
     ]);
 
   type Pol = {
@@ -190,6 +254,7 @@ export async function getApplyLeaveContext(
   return {
     types: out,
     holidays: ((holidays as { date: string }[] | null) ?? []).map((h) => h.date),
+    shift,
   };
 }
 
@@ -245,7 +310,7 @@ export async function getMyLeaveRequests(
   const { data } = await supabase
     .from("leave_requests")
     .select(
-      "id, leave_type_id, start_date, end_date, days_count, duration_type, status, reason, admin_comment, sandwich_days_included, created_at, leave_types(code, name)"
+      "id, leave_type_id, start_date, end_date, days_count, duration_type, quarter_slot, status, reason, admin_comment, sandwich_days_included, created_at, leave_types(code, name)"
     )
     .eq("employee_id", employeeId)
     .order("created_at", { ascending: false });
@@ -257,6 +322,7 @@ export async function getMyLeaveRequests(
     end_date: string;
     days_count: number | null;
     duration_type: string | null;
+    quarter_slot: number | null;
     status: string;
     reason: string | null;
     admin_comment: string | null;
@@ -274,6 +340,7 @@ export async function getMyLeaveRequests(
     endDate: r.end_date,
     daysCount: r.days_count ?? 1,
     durationType: r.duration_type ?? "full_day",
+    quarterSlot: r.quarter_slot ?? null,
     status: r.status,
     reason: r.reason ?? "",
     adminComment: r.admin_comment,

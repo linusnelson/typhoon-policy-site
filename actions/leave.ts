@@ -5,12 +5,31 @@ import { requireAdmin, requireAdminOrManager, AuthzError } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { str, type ActionState } from "@/lib/action-utils";
 import { computeLeaveDays, type LeaveDuration } from "@/lib/engine/leave-days";
+import { getEmployeeShift } from "@/lib/data/employee-leave";
 import { istToday } from "@/lib/ist";
 import { fyStartYearFromKey } from "@/lib/leave-year";
 
 function dayDiffInclusive(start: string, end: string): number {
   const ms = new Date(end).getTime() - new Date(start).getTime();
   return Math.floor(ms / 86_400_000) + 1;
+}
+
+/** Balances carry quarter-day fractions; keep float noise out of the column. */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+// quarter_slot is only valid alongside duration_type='quarter_day' (DB CHECK).
+// Returns the slot, or an error message for an out-of-range pick.
+function parseQuarterSlot(
+  durationType: LeaveDuration,
+  raw: string | null
+): { slot: number | null; error?: string } {
+  if (durationType !== "quarter_day") return { slot: null };
+  const n = Number(raw ?? "1");
+  if (!Number.isInteger(n) || n < 1 || n > 4)
+    return { slot: null, error: "Pick which part of the day the 2-hour leave covers." };
+  return { slot: n };
 }
 
 function revalidate() {
@@ -52,7 +71,8 @@ export async function approveLeave(formData: FormData): Promise<void> {
     );
   }
 
-  // Deduct whole days (ceil) from the employee's balance for the start year.
+  // Deduct the exact days from the employee's balance for the start year —
+  // fractions included (half day = 0.5, 2-hour leave = 0.25).
   const days = req.days_count > 0 ? req.days_count : dayDiffInclusive(req.start_date, req.end_date);
   if (req.leave_type_id) {
     const year = fyStartYearFromKey(req.start_date as string);
@@ -66,7 +86,7 @@ export async function approveLeave(formData: FormData): Promise<void> {
     if (bal) {
       await supabase
         .from("leave_balances")
-        .update({ used: bal.used + Math.ceil(days) })
+        .update({ used: round2(bal.used + days) })
         .eq("id", bal.id);
     }
   }
@@ -173,7 +193,7 @@ export async function adminCancelLeave(formData: FormData): Promise<void> {
     if (bal) {
       await supabase
         .from("leave_balances")
-        .update({ used: Math.max(bal.used - Math.ceil(days), 0) })
+        .update({ used: round2(Math.max(bal.used - days, 0)) })
         .eq("id", bal.id);
     }
   }
@@ -318,6 +338,7 @@ export async function adminApplyLeave(
   const durationRaw = str(formData, "durationType") ?? "full_day";
   const startDate = str(formData, "startDate");
   const reason = str(formData, "reason");
+  const quarterSlotRaw = str(formData, "quarterSlot");
   let endDate = str(formData, "endDate");
 
   if (!employeeId) return { ok: false, error: "Missing employee." };
@@ -328,6 +349,11 @@ export async function adminApplyLeave(
   const durationType = (VALID_DURATIONS as string[]).includes(durationRaw)
     ? (durationRaw as LeaveDuration)
     : "full_day";
+  const { slot: quarterSlot, error: slotError } = parseQuarterSlot(
+    durationType,
+    quarterSlotRaw
+  );
+  if (slotError) return { ok: false, error: slotError };
   if (durationType !== "full_day") endDate = startDate;
   if (!endDate) endDate = startDate;
   if (endDate < startDate)
@@ -364,10 +390,18 @@ export async function adminApplyLeave(
     durationType,
     sandwichRuleEnabled: (policy?.sandwich_rule_enabled as boolean) ?? true,
     holidays,
+    quarterSlot,
+    shift: await getEmployeeShift(employeeId),
   });
   const requested = calc.totalDays;
-  if (requested <= 0)
-    return { ok: false, error: "This range has no working days to deduct." };
+  if (requested <= 0) {
+    return {
+      ok: false,
+      error: calc.nonWorkingReason
+        ? `This leave would deduct nothing — ${calc.nonWorkingReason}.`
+        : "This range has no working days to deduct.",
+    };
+  }
 
   const maxConsecutive = (policy?.max_consecutive_days as number) ?? 0;
   if (maxConsecutive > 0 && requested > maxConsecutive) {
@@ -418,6 +452,7 @@ export async function adminApplyLeave(
       status: "approved",
       days_count: requested,
       duration_type: durationType,
+      quarter_slot: quarterSlot,
       sandwich_days_included: calc.sandwichDays.length,
       reviewed_by: admin.id,
       reviewed_at: nowIso,
@@ -439,7 +474,7 @@ export async function adminApplyLeave(
     if (bal) {
       await supabase
         .from("leave_balances")
-        .update({ used: (bal.used as number) + Math.ceil(requested) })
+        .update({ used: round2((bal.used as number) + requested) })
         .eq("id", bal.id);
     }
   }
@@ -491,6 +526,7 @@ export async function adminEditPendingLeave(
   const durationRaw = str(formData, "durationType") ?? "full_day";
   const startDate = str(formData, "startDate");
   const reason = str(formData, "reason");
+  const quarterSlotRaw = str(formData, "quarterSlot");
   const daysOverrideRaw = str(formData, "daysOverride");
   const adminComment = str(formData, "adminComment");
   let endDate = str(formData, "endDate");
@@ -517,6 +553,11 @@ export async function adminEditPendingLeave(
   const durationType = (VALID_DURATIONS as string[]).includes(durationRaw)
     ? (durationRaw as LeaveDuration)
     : "full_day";
+  const { slot: quarterSlot, error: slotError } = parseQuarterSlot(
+    durationType,
+    quarterSlotRaw
+  );
+  if (slotError) return { ok: false, error: slotError };
   if (durationType !== "full_day") endDate = startDate;
   if (!endDate) endDate = startDate;
   if (endDate < startDate)
@@ -556,10 +597,18 @@ export async function adminEditPendingLeave(
     durationType,
     sandwichRuleEnabled: (policy?.sandwich_rule_enabled as boolean) ?? true,
     holidays,
+    quarterSlot,
+    shift: await getEmployeeShift(req.employee_id as string),
   });
   const requested = daysOverride ?? calc.totalDays;
-  if (requested <= 0)
-    return { ok: false, error: "This range has no working days to deduct." };
+  if (requested <= 0) {
+    return {
+      ok: false,
+      error: calc.nonWorkingReason
+        ? `This leave would deduct nothing — ${calc.nonWorkingReason}. Override the days count if that is intended.`
+        : "This range has no working days to deduct.",
+    };
+  }
 
   const maxConsecutive = (policy?.max_consecutive_days as number) ?? 0;
   if (maxConsecutive > 0 && requested > maxConsecutive) {
@@ -602,6 +651,7 @@ export async function adminEditPendingLeave(
       start_date: startDate,
       end_date: endDate,
       duration_type: durationType,
+      quarter_slot: quarterSlot,
       reason,
       days_count: requested,
       // With an override the auto sandwich count no longer describes the

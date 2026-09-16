@@ -8,7 +8,7 @@ import { ApplyLeaveForm } from "@/components/employee/ApplyLeaveForm";
 
 export default async function ApplyLeavePage() {
   const me = await requireEmployee();
-  const { types, holidays } = await getApplyLeaveContext(me.id);
+  const { types, holidays, shift } = await getApplyLeaveContext(me.id);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -29,7 +29,12 @@ export default async function ApplyLeavePage() {
           No leave types are available to you. Contact HR.
         </Card>
       ) : (
-        <ApplyLeaveForm types={types} holidays={holidays} today={istToday()} />
+        <ApplyLeaveForm
+          types={types}
+          holidays={holidays}
+          shift={shift}
+          today={istToday()}
+        />
       )}
     </div>
   );

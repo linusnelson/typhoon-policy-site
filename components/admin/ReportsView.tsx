@@ -31,11 +31,14 @@ const TONE: Record<string, string> = {
   Present: "bg-success-soft text-success-deep",
   Late: "bg-warning-soft text-warning-deep",
   "Half Day": "bg-warning-soft text-warning-deep",
+  Partial: "bg-warning-soft text-warning-deep",
   "On Leave": "bg-info-soft text-info-deep",
-  Incomplete: "bg-gray-100 text-gray-500",
+  Incomplete: "bg-warning-soft text-warning-deep",
   Absent: "bg-danger-soft text-danger-deep",
   LOP: "bg-danger-soft text-danger-deep",
   "No Punch": "bg-gray-100 text-gray-400",
+  "Weekly Off": "bg-gray-100 text-gray-400",
+  Holiday: "bg-gray-100 text-gray-500",
   "Not Employed": "bg-gray-100 text-gray-400",
 };
 
@@ -267,7 +270,7 @@ function SummaryTable({ rows }: { rows: MonthlySummaryRow[] }) {
               <th className={thNum}>Absent</th>
               <th className={thNum}>LOP</th>
               <th className={thNum}>Late</th>
-              <th className={thNum}>Half</th>
+              <th className={thNum}>Partial</th>
               <th className={thNum}>Hours</th>
               <th className={thNum}>OT</th>
               <th className={thNum}>Visits</th>

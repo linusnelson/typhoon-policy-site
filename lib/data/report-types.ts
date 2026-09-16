@@ -1,7 +1,8 @@
 // Report row models + CSV generators. Client-safe (no server imports) so the
 // preview table and the CSV export route can both consume these.
 // Mirrors clock_bays lib/features/admin/data/report_repository.dart — keep in sync.
-import { LEAVE_DURATION_LABEL } from "@/lib/leave-status";
+import { LEAVE_DURATION_LABEL, leaveDurationLabel } from "@/lib/leave-status";
+import type { DayLabel, PartStatus } from "@/lib/engine/day-parts";
 
 export type ReportType =
   | "daily"
@@ -16,7 +17,9 @@ export interface DailyAttendanceRow {
   employeeName: string;
   department: string;
   location: string;
-  // 'Present' | 'Late' | 'Half Day' | 'On Leave' | 'Absent' | 'Incomplete' | 'LOP' | 'No Punch'
+  // DAY_LABEL_STATUS of the engine's day label: 'Present' | 'Late' | 'Partial' |
+  // 'Incomplete' | 'On Leave' | 'Absent' | 'LOP' | 'Holiday' | 'Weekly Off' |
+  // 'No Punch'.
   status: string;
   workType: string;
   punchIn: string;
@@ -38,7 +41,7 @@ export interface MonthlySummaryRow {
   absentDays: number; // Saturday absence counts as 0.5
   leaveDays: number; // Saturday leave counts as 0.5
   lateDays: number;
-  halfDays: number;
+  halfDays: number; // days labelled "partial" — some expected part went unfilled
   incompleteDays: number; // punch-in without punch-out
   lopDays: number; // absent days where leave balance was zero
   totalWorkedHours: number;
@@ -286,6 +289,7 @@ export function zohoStatus(status: string): string {
     case "Late":
       return "PL";
     case "Half Day":
+    case "Partial":
       return "H";
     case "On Leave":
       return "L";
@@ -293,7 +297,12 @@ export function zohoStatus(status: string): string {
       return "I";
     case "LOP":
       return "LOP";
+    case "Weekly Off":
+      return "WO";
+    case "Holiday":
+      return "HO";
     case "Not Employed":
+    case "—":
       return "-";
     default:
       return "A";
@@ -313,29 +322,20 @@ function ddmmyyyy(dateKey: string): string {
 }
 
 // ── Muster (month grid) ──────────────────────────────────────────────────────
-// A muster cell is a single day resolved into four 2-hour quarter slots
-// (q0,q1 = morning · q2,q3 = afternoon). A whole day is four identical slots;
-// a half day is two-and-two; a quarter-day leave splits the morning further.
+// A muster cell is a single day resolved into the FOUR equal parts of the shift
+// window (day-parts engine). Each part is independent: a 2-hour leave occupies
+// exactly the part it was booked for, a half day is two-and-two, and a whole
+// day is four identical parts.
 // Palette mirrors the clock_bays admin dashboard month grid (pastel bg + darker
 // text) so the web muster reads the same as the Flutter one.
 
-export type QuarterStatus =
-  | "office"
-  | "wfh"
-  | "field"
-  | "event"
-  | "leave"
-  | "holiday"
-  | "weekly_off"
-  | "absent"
-  | "lop"
-  | "not_punched"
-  | "none";
+// One per shift part — the engine's PartStatus, verbatim.
+export type QuarterStatus = PartStatus;
 
 export type MusterCell = {
-  // Four 2-hour slots, morning→afternoon. Always length 4.
+  // The four shift parts, earliest → latest. Always length 4.
   quarters: QuarterStatus[];
-  // Human-readable breakdown for tooltips (e.g. "AM Field · PM Office").
+  // Human-readable breakdown for tooltips (e.g. "P1–P2 Field · P3–P4 Office").
   note: string;
 };
 
@@ -425,6 +425,81 @@ export function collapseQuarters(quarters: QuarterStatus[]): QuarterRun[] {
   }
   return runs;
 }
+
+// Tooltip / detail text for a day: "Office" when the whole day is one status,
+// otherwise the per-part runs, e.g. "P1–P2 On leave · P3–P4 Office".
+export function describeParts(parts: QuarterStatus[]): string {
+  const runs = collapseQuarters(parts);
+  if (runs.length === 1) return MUSTER_STYLES[runs[0].status].label;
+  const out: string[] = [];
+  let i = 0;
+  for (const r of runs) {
+    const a = i + 1;
+    const b = i + r.span;
+    i = b;
+    out.push(`${a === b ? `P${a}` : `P${a}–P${b}`} ${MUSTER_STYLES[r.status].label}`);
+  }
+  return out.join(" · ");
+}
+
+// ── Day labels (day-parts engine) ────────────────────────────────────────────
+// The single vocabulary every attendance surface renders. "partial" = some
+// expected part of the day went unfilled; "incomplete" = a session with no
+// punch-out; "lop" = absent with no leave balance left.
+
+export type BadgeTone = "success" | "warning" | "danger" | "info" | "brand" | "neutral";
+
+export const DAY_LABEL_TEXT: Record<DayLabel, string> = {
+  present: "Present",
+  late: "Late",
+  wfh: "WFH",
+  field: "Client visit",
+  event: "Event",
+  partial: "Partial day",
+  incomplete: "No punch-out",
+  on_leave: "On leave",
+  absent: "Absent",
+  lop: "LOP (unpaid)",
+  holiday: "Holiday",
+  weekly_off: "Weekly off",
+  not_punched: "Not punched",
+  upcoming: "Upcoming",
+};
+
+export const DAY_LABEL_TONE: Record<DayLabel, BadgeTone> = {
+  present: "success",
+  late: "warning",
+  wfh: "success",
+  field: "brand",
+  event: "brand",
+  partial: "warning",
+  incomplete: "warning",
+  on_leave: "info",
+  absent: "danger",
+  lop: "danger",
+  holiday: "neutral",
+  weekly_off: "neutral",
+  not_punched: "neutral",
+  upcoming: "neutral",
+};
+
+// Report status text (the string that lands in the CSV / preview table).
+export const DAY_LABEL_STATUS: Record<DayLabel, string> = {
+  present: "Present",
+  late: "Late",
+  wfh: "Present",
+  field: "Present",
+  event: "Present",
+  partial: "Partial",
+  incomplete: "Incomplete",
+  on_leave: "On Leave",
+  absent: "Absent",
+  lop: "LOP",
+  holiday: "Holiday",
+  weekly_off: "Weekly Off",
+  not_punched: "No Punch",
+  upcoming: "—",
+};
 
 // Compact cell code, e.g. whole office → "P"; AM field / PM office → "F/P".
 export function musterCellCode(cell: MusterCell): string {
@@ -559,6 +634,8 @@ export interface LeaveRegisterCsvRow {
   end_date: string;
   days_count: number;
   duration_type: string;
+  // quarter_day only: which of the day's four parts the 2-hour leave covers.
+  quarter_slot?: number | null;
   status: string;
   sandwich_days_included: number;
   reason: string | null;
@@ -586,7 +663,7 @@ export function leaveRegisterCsv(rows: LeaveRegisterCsvRow[]): string {
         ddmmyyyy(r.start_date),
         ddmmyyyy(r.end_date),
         r.days_count,
-        LEAVE_DURATION_LABEL[r.duration_type] ?? r.duration_type,
+        leaveDurationLabel(r.duration_type, r.quarter_slot ?? null),
         r.status,
         r.sandwich_days_included || "",
         csvCell(r.reason ?? ""),

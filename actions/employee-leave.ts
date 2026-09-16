@@ -7,6 +7,14 @@ import { createClient } from "@/lib/supabase/server";
 import { str } from "@/lib/action-utils";
 import type { ActionState } from "@/lib/action-utils";
 import { computeLeaveDays, type LeaveDuration } from "@/lib/engine/leave-days";
+import {
+  defaultWeeklyOff,
+  leaveMask,
+  partWindows,
+  windowMask,
+  type ShiftTimes,
+} from "@/lib/engine/day-parts";
+import { getEmployeeShift } from "@/lib/data/employee-leave";
 import { fyStartYearFromKey } from "@/lib/leave-year";
 
 const VALID_DURATIONS: LeaveDuration[] = [
@@ -15,6 +23,62 @@ const VALID_DURATIONS: LeaveDuration[] = [
   "half_day_afternoon",
   "quarter_day",
 ];
+
+// Emergency leave: employees may apply after the fact, but only this far back.
+// Anything older is an admin correction (admins have no limit).
+const MAX_BACKDATE_DAYS = 30;
+
+/** Balances carry quarter-day fractions; keep float noise out of the column. */
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+function weekdayOf(dateKey: string): number {
+  return new Date(`${dateKey}T00:00:00Z`).getUTCDay();
+}
+
+function timeToMinutes(t: string | null | undefined): number | null {
+  if (!t) return null;
+  const [h, m] = t.split(":");
+  const n = Number(h) * 60 + Number(m ?? 0);
+  return Number.isFinite(n) ? n : null;
+}
+
+function anyOverlap(a: boolean[], b: boolean[]): boolean {
+  return a.some((v, k) => v && b[k]);
+}
+
+/** Which of the four day parts a leave covers on `dateKey`. */
+function leavePartsOn(
+  dateKey: string,
+  startDate: string,
+  durationType: LeaveDuration,
+  quarterSlot: number | null
+): boolean[] {
+  if (durationType === "full_day" || dateKey !== startDate)
+    return [true, true, true, true];
+  return leaveMask({ duration: durationType, quarterSlot });
+}
+
+/** Which parts a morning_half / afternoon_half / full_day window covers. */
+function windowParts(timeWindow: string | null): boolean[] {
+  if (timeWindow === "morning_half") return windowMask("morning");
+  if (timeWindow === "afternoon_half") return windowMask("afternoon");
+  return windowMask("full");
+}
+
+/** Which parts a custom event window (start/end time) touches. */
+function spanParts(
+  shift: ShiftTimes,
+  dateKey: string,
+  startMin: number,
+  endMin: number
+): boolean[] {
+  const wo = defaultWeeklyOff(weekdayOf(dateKey), shift.saturdayHalfDay);
+  return partWindows(shift, wo === "full" ? null : wo).map(
+    (w) => !!w && Math.min(w.endMin, endMin) > Math.max(w.startMin, startMin)
+  );
+}
 
 function fmtLong(dateKey: string): string {
   return new Date(`${dateKey}T00:00:00Z`).toLocaleDateString("en-IN", {
@@ -173,12 +237,13 @@ export async function cancelMyLeave(formData: FormData): Promise<void> {
       .eq("year", year)
       .maybeSingle();
     if (bal) {
-      const restore = Math.ceil(
+      // Restore the exact fraction that was deducted — a half day gives back
+      // 0.5, a 2-hour leave 0.25. Never rounded up.
+      const restore =
         (req.days_count as number) > 0
           ? (req.days_count as number)
-          : dayDiffInclusive(req.start_date as string, req.end_date as string)
-      );
-      const nextUsed = Math.max((bal.used as number) - restore, 0);
+          : dayDiffInclusive(req.start_date as string, req.end_date as string);
+      const nextUsed = round2(Math.max((bal.used as number) - restore, 0));
       await supabase.from("leave_balances").update({ used: nextUsed }).eq("id", bal.id);
     }
   }
@@ -213,6 +278,7 @@ export async function applyMyLeave(
   const durationRaw = str(formData, "durationType") ?? "full_day";
   const startDate = str(formData, "startDate");
   const reason = str(formData, "reason");
+  const quarterSlotRaw = str(formData, "quarterSlot");
   let endDate = str(formData, "endDate");
 
   if (!leaveTypeId) return { ok: false, error: "Pick a leave type." };
@@ -221,6 +287,16 @@ export async function applyMyLeave(
   const durationType = (VALID_DURATIONS as string[]).includes(durationRaw)
     ? (durationRaw as LeaveDuration)
     : "full_day";
+
+  // Which of the four day parts a 2-hour leave covers (NULL for everything else
+  // — the column's CHECK constraint enforces that pairing).
+  let quarterSlot: number | null = null;
+  if (durationType === "quarter_day") {
+    const n = Number(quarterSlotRaw ?? "1");
+    if (!Number.isInteger(n) || n < 1 || n > 4)
+      return { ok: false, error: "Pick which part of the day the 2-hour leave covers." };
+    quarterSlot = n;
+  }
 
   // Half/quarter day are single-day; force end = start.
   if (durationType !== "full_day") endDate = startDate;
@@ -232,10 +308,22 @@ export async function applyMyLeave(
   const { data: policy } = await supabase
     .from("leave_policies")
     .select(
-      "is_unlimited, sandwich_rule_enabled, min_advance_days, max_consecutive_days"
+      "is_unlimited, sandwich_rule_enabled, min_advance_days, max_consecutive_days, allow_half_day, allow_quarter_day"
     )
     .eq("leave_type_id", leaveTypeId)
     .maybeSingle();
+
+  // The form hides disallowed durations; re-check here so a stale form (or a
+  // direct POST) can't book a half/2-hour leave on a type that forbids it.
+  if (
+    (durationType === "half_day_morning" || durationType === "half_day_afternoon") &&
+    policy?.allow_half_day === false
+  ) {
+    return { ok: false, error: "This leave type can't be taken as a half day." };
+  }
+  if (durationType === "quarter_day" && policy?.allow_quarter_day === false) {
+    return { ok: false, error: "This leave type can't be taken as a 2-hour leave." };
+  }
 
   const today = new Date();
   const todayKey = new Date(today.getTime() + (5 * 60 + 30) * 60_000)
@@ -251,6 +339,19 @@ export async function applyMyLeave(
         error: `This leave needs at least ${minAdvance} day(s) advance notice.`,
       };
     }
+  } else {
+    // Emergency leave — taken first, applied for after. Backdating is capped so
+    // old months can't be rewritten; beyond it an admin applies the leave.
+    const oldest = new Date(`${todayKey}T00:00:00Z`);
+    oldest.setUTCDate(oldest.getUTCDate() - MAX_BACKDATE_DAYS);
+    if (startDate < oldest.toISOString().slice(0, 10)) {
+      return {
+        ok: false,
+        error: `Emergency leave can be backdated up to ${MAX_BACKDATE_DAYS} days (from ${fmt(
+          oldest.toISOString().slice(0, 10)
+        )}). For anything older, ask an admin to apply it for you.`,
+      };
+    }
   }
 
   // Holidays in range for the sandwich calculation.
@@ -262,16 +363,25 @@ export async function applyMyLeave(
   const holidays = (holidayRows ?? []).map((h) => h.date as string);
 
   const sandwichEnabled = (policy?.sandwich_rule_enabled as boolean) ?? true;
+  const shift = await getEmployeeShift(me.id);
   const calc = computeLeaveDays({
     startKey: startDate,
     endKey: endDate,
     durationType,
     sandwichRuleEnabled: sandwichEnabled,
     holidays,
+    quarterSlot,
+    shift,
   });
   const requested = calc.totalDays;
-  if (requested <= 0)
-    return { ok: false, error: "This range has no working days to deduct." };
+  if (requested <= 0) {
+    return {
+      ok: false,
+      error: calc.nonWorkingReason
+        ? `This leave would deduct nothing — ${calc.nonWorkingReason}. Pick a working part of a working day.`
+        : "This range has no working days to deduct.",
+    };
+  }
 
   const maxConsecutive = (policy?.max_consecutive_days as number) ?? 0;
   if (maxConsecutive > 0 && requested > maxConsecutive) {
@@ -308,25 +418,29 @@ export async function applyMyLeave(
     }
   }
 
-  // Conflict: scheduled visits in the range.
+  // Conflict: scheduled visits in the range. A morning visit only blocks a
+  // leave that covers a morning part — the opposite half stays free.
   const { data: visitConflict } = await supabase
     .from("visit_schedules")
-    .select("visit_date")
+    .select("visit_date, time_window")
     .eq("employee_id", me.id)
     .in("status", ["pending", "approved"])
     .gte("visit_date", startDate)
-    .lte("visit_date", endDate)
-    .limit(1);
-  if (visitConflict && visitConflict.length > 0) {
-    return {
-      ok: false,
-      error: `You have a scheduled client visit on ${
-        visitConflict[0].visit_date
-      }. Cancel or reschedule it before applying leave.`,
-    };
+    .lte("visit_date", endDate);
+  for (const v of visitConflict ?? []) {
+    const date = v.visit_date as string;
+    const parts = windowParts(v.time_window as string | null);
+    if (anyOverlap(leavePartsOn(date, startDate, durationType, quarterSlot), parts)) {
+      return {
+        ok: false,
+        error: `You have a scheduled client visit on ${fmt(
+          date
+        )} covering this part of the day. Cancel or reschedule it before applying leave.`,
+      };
+    }
   }
 
-  // Conflict: non-declined events in the range.
+  // Conflict: non-declined events in the range — same part comparison.
   const { data: attendee } = await supabase
     .from("event_attendees")
     .select("event_id")
@@ -336,16 +450,27 @@ export async function applyMyLeave(
   if (eventIds.length > 0) {
     const { data: evConflict } = await supabase
       .from("events")
-      .select("event_date")
+      .select("event_date, time_window, start_time, end_time")
       .in("id", eventIds)
       .gte("event_date", startDate)
-      .lte("event_date", endDate)
-      .limit(1);
-    if (evConflict && evConflict.length > 0) {
-      return {
-        ok: false,
-        error: `You have an event on ${evConflict[0].event_date}. Resolve it before applying leave.`,
-      };
+      .lte("event_date", endDate);
+    for (const e of evConflict ?? []) {
+      const date = e.event_date as string;
+      const win = e.time_window as string | null;
+      const startMin = timeToMinutes(e.start_time as string | null);
+      const endMin = timeToMinutes(e.end_time as string | null);
+      const parts =
+        win === "custom" && startMin !== null && endMin !== null
+          ? spanParts(shift, date, startMin, endMin)
+          : windowParts(win);
+      if (anyOverlap(leavePartsOn(date, startDate, durationType, quarterSlot), parts)) {
+        return {
+          ok: false,
+          error: `You have an event on ${fmt(
+            date
+          )} covering this part of the day. Resolve it before applying leave.`,
+        };
+      }
     }
   }
 
@@ -362,6 +487,7 @@ export async function applyMyLeave(
       status: "pending",
       days_count: requested,
       duration_type: durationType,
+      quarter_slot: quarterSlot,
       sandwich_days_included: calc.sandwichDays.length,
     })
     .select("id")

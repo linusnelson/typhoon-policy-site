@@ -14,7 +14,7 @@ import {
 
 // A4-landscape monthly muster (attendance register). One month per document;
 // employees paginate across pages with the day-header row repeated on each.
-// Day cells render their 2-hour quarter slots as proportional coloured blocks,
+// Day cells render the four parts of the shift day as proportional coloured blocks,
 // mirroring the on-screen grid.
 
 const WD = ["S", "M", "T", "W", "T", "F", "S"];
@@ -236,7 +236,7 @@ export function MusterPdf(d: MusterPdfData) {
           ))}
 
           <Text style={s.footer} fixed>
-            {d.companyName} — Attendance Muster · {d.monthLabel} · Split cell = AM / PM ·
+            {d.companyName} — Attendance Muster · {d.monthLabel} · Each cell = the 4 parts of the shift day ·
             P/L/A = present / leave / absent days · Confidential.
           </Text>
         </Page>

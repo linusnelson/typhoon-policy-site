@@ -125,10 +125,8 @@ export function AttendancePolicyManager({
                 </div>
               </div>
               <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
-                <Stat label="Late after" value={`${p.late_threshold_min}m`} />
-                <Stat label="Grace" value={`${p.grace_period_min}m`} />
-                <Stat label="Half day ≥" value={`${p.half_day_min_hours}h`} />
-                <Stat label="Full day ≥" value={`${p.full_day_min_hours}h`} />
+                <Stat label="Grace period" value={`${p.late_threshold_min}m`} />
+                <Stat label="Day split" value="4 parts" />
                 <Stat label="Late action" value={ACTION_LABEL[p.late_policy_action]} />
                 <Stat label="Lates/absent" value={`${p.lates_per_absent}`} />
                 <Stat label="WFH/month" value={`${p.wfh_days_per_month}`} />
@@ -194,13 +192,18 @@ function PolicyForm({
       )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <Num name="late_threshold_min" label="Late after (min)" defaultValue={policy?.late_threshold_min ?? 15} />
-        <Num name="grace_period_min" label="Grace (min)" defaultValue={policy?.grace_period_min ?? 5} />
+        <Num name="late_threshold_min" label="Grace period (min)" defaultValue={policy?.late_threshold_min ?? 15} />
         <Num name="lates_per_absent" label="Lates per absent" defaultValue={policy?.lates_per_absent ?? 3} />
-        <Num name="half_day_min_hours" label="Half-day ≥ (h)" defaultValue={policy?.half_day_min_hours ?? 4} step="0.5" />
-        <Num name="full_day_min_hours" label="Full-day ≥ (h)" defaultValue={policy?.full_day_min_hours ?? 8} step="0.5" />
         <Num name="wfh_days_per_month" label="WFH days/month" defaultValue={policy?.wfh_days_per_month ?? 4} />
       </div>
+
+      <p className="rounded-lg border border-gray-100 bg-offwhite px-3 py-2 text-xs text-gray-500">
+        The shift defines the day: it is split into <strong>four equal parts</strong>,
+        and each part is earned by being present for at least half of it. Half-day
+        and full-day hour thresholds are no longer used — set the hours on the
+        shift instead. Arriving later than the grace period is a late mark only;
+        it never costs hours.
+      </p>
 
       <label className="block text-sm">
         <span className="mb-1 block font-medium text-ink">Late policy action</span>

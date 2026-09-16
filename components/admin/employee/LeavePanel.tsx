@@ -6,6 +6,7 @@ import {
 } from "@/lib/data/employee-leave";
 import { listCompOffGrants } from "@/lib/data/comp-off";
 import { formatIstDate } from "@/lib/ist";
+import { leaveDurationLabel } from "@/lib/leave-status";
 import { Badge } from "@/components/ui";
 import { CancelLeaveButton } from "./CancelLeaveButton";
 import { AdminApplyLeaveButton } from "./AdminApplyLeaveButton";
@@ -52,7 +53,11 @@ export async function LeavePanel({ employeeId }: { employeeId: string }) {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-bold text-ink">Leave</h2>
-        <AdminApplyLeaveButton employeeId={employeeId} types={applyTypes} />
+        <AdminApplyLeaveButton
+          employeeId={employeeId}
+          types={applyTypes}
+          shift={applyCtx.shift}
+        />
       </div>
 
       <Section title="Leave balances">
@@ -182,7 +187,7 @@ export async function LeavePanel({ employeeId }: { employeeId: string }) {
                       {r.daysCount === 1 ? "" : "s"}
                     </div>
                     <div className="truncate text-xs text-gray-500">
-                      {[r.durationType.replace(/_/g, " "), r.reason]
+                      {[leaveDurationLabel(r.durationType, r.quarterSlot), r.reason]
                         .filter(Boolean)
                         .join(" · ")}
                     </div>
@@ -202,6 +207,7 @@ export async function LeavePanel({ employeeId }: { employeeId: string }) {
                           id: r.id,
                           leaveTypeId: r.leaveTypeId,
                           durationType: r.durationType,
+                          quarterSlot: r.quarterSlot,
                           startDate: r.startDate,
                           endDate: r.endDate,
                           reason: r.reason,
@@ -209,6 +215,7 @@ export async function LeavePanel({ employeeId }: { employeeId: string }) {
                           adminComment: r.adminComment,
                         }}
                         types={applyTypes}
+                        shift={applyCtx.shift}
                       />
                     )}
                     {(r.status === "approved" || r.status === "pending") && (

@@ -138,7 +138,9 @@ function RequestList({
                 </span>
                 <Badge tone={STATUS_TONE[r.status] ?? "neutral"}>{r.status}</Badge>
                 <span className="text-xs text-gray-400">
-                  {DURATION_LABEL[r.durationType] ?? r.durationType}
+                  {r.durationType === "quarter_day"
+                    ? `${DURATION_LABEL.quarter_day} · part ${r.quarterSlot ?? 1}`
+                    : DURATION_LABEL[r.durationType] ?? r.durationType}
                 </span>
               </div>
               <div className="mt-1 text-sm text-gray-600">

@@ -4,7 +4,7 @@ import { Badge, Card } from "@/components/ui";
 import { formatIstDate, formatIstDateTime, istToday } from "@/lib/ist";
 import { approveLeave, rejectLeave } from "@/actions/leave";
 import type { LeaveRegisterRow } from "@/lib/data/leave";
-import { LEAVE_DURATION_LABEL, type LeaveStatus } from "@/lib/leave-status";
+import { leaveDurationLabel, type LeaveStatus } from "@/lib/leave-status";
 import { CancelLeaveButton } from "./CancelLeaveButton";
 import { ReopenLeaveButton } from "./ReopenLeaveButton";
 
@@ -64,7 +64,7 @@ function LeaveRow({
             )}
             {r.leave_type_code && <Badge tone="brand">{r.leave_type_code}</Badge>}
             <Badge tone="neutral">
-              {LEAVE_DURATION_LABEL[r.duration_type] ?? r.duration_type}
+              {leaveDurationLabel(r.duration_type, r.quarter_slot)}
             </Badge>
             <Badge tone={STATUS_TONE[r.status]}>{r.status}</Badge>
           </div>

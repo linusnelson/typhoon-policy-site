@@ -47,7 +47,23 @@ test("present when on time, late when past threshold", () => {
   assert.equal(late.isLate, true);
 });
 
-test("isEarlyCheckout: >15min before shift end", () => {
+test("isEarlyCheckout: strict — any minute before shift end counts", () => {
   assert.equal(isEarlyCheckout(1064, 1080), true); // 17:44 vs 18:00
-  assert.equal(isEarlyCheckout(1070, 1080), false); // 17:50
+  assert.equal(isEarlyCheckout(1070, 1080), true); // 17:50 — no 15-min tolerance
+  assert.equal(isEarlyCheckout(1079, 1080), true); // 17:59
+  assert.equal(isEarlyCheckout(1080, 1080), false); // on the dot
+  assert.equal(isEarlyCheckout(1090, 1080), false); // stayed late
+});
+
+test("engine result wins over the bare punch-in fallback", () => {
+  const parts = ["office", "office", "office", "office"] as const;
+  const day = { parts: [...parts], isLate: true } as never;
+  const r = classifyTodayStatus({ ...base, punchInMinutes: 545, day });
+  assert.equal(r.status, "late");
+  assert.equal(r.isLate, true);
+});
+
+test("engine result with no work parts reads not punched", () => {
+  const day = { parts: ["not_punched", "none", "none", "none"], isLate: false } as never;
+  assert.equal(classifyTodayStatus({ ...base, day }).status, "not_punched");
 });

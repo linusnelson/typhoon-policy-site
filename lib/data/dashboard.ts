@@ -1,15 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentEmployee } from "@/lib/policies";
-import { istToday, istDayBoundsUtc, istMinutesOfDay } from "@/lib/ist";
-import {
-  classifyTodayStatus,
-  isEarlyCheckout,
-  type DayStatus,
-} from "@/lib/engine/day-status";
-
-const FALLBACK_START = 9 * 60; // 09:00
-const FALLBACK_END = 18 * 60; // 18:00
-const DEFAULT_LATE = 15;
+import { istToday, istMinutesOfDay } from "@/lib/ist";
+import { loadClassifyContext } from "@/lib/data/day-inputs";
+import { classifyTodayStatus, isEarlyCheckout, type DayStatus } from "@/lib/engine/day-status";
+import { WORK_STATUSES } from "@/lib/engine/day-parts";
 
 export interface AttendanceTodayRow {
   employeeId: string;
@@ -45,48 +39,32 @@ export interface DashboardSummary {
   rows: AttendanceTodayRow[];
 }
 
-function timeToMinutes(t: string): number {
-  const [h, m] = t.split(":");
-  return Number(h) * 60 + Number(m);
-}
-
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const me = await getCurrentEmployee();
   const orgId = me?.org_id;
   const supabase = await createClient();
 
   const todayStr = istToday();
-  const { startUtc, endUtc } = istDayBoundsUtc(todayStr);
 
-  const [
-    { data: employees },
-    { data: punches },
-    { data: leaves },
-    { data: shifts },
-    { data: policies },
-    { data: locations },
-  ] = await Promise.all([
-    supabase
-      .from("employees")
-      .select("id, name, location_id, date_of_joining, shift_id, department_id")
-      .eq("status", "active")
-      .neq("role", "admin")
-      .eq("is_service_account", false),
-    supabase
-      .from("attendance_punches")
-      .select("employee_id, work_type, punch_type, punched_at")
-      .gte("punched_at", startUtc)
-      .lt("punched_at", endUtc),
-    supabase
-      .from("leave_requests")
-      .select("employee_id, status")
-      .in("status", ["pending", "approved", "rejected"])
-      .lte("start_date", todayStr)
-      .gte("end_date", todayStr),
-    supabase.from("shifts").select("id, start_time, end_time, is_default"),
-    supabase.from("attendance_policies").select("department_id, late_threshold_min"),
-    supabase.from("locations").select("id, name"),
-  ]);
+  const [{ data: employees }, { data: rejected }, { data: locations }, ctx] =
+    await Promise.all([
+      supabase
+        .from("employees")
+        .select("id, name, location_id, date_of_joining, shift_id, department_id")
+        .eq("status", "active")
+        .neq("role", "admin")
+        .eq("is_service_account", false),
+      // Rejected leave for today — the LOP signal. Pending/approved leave is
+      // already part of the engine's day classification.
+      supabase
+        .from("leave_requests")
+        .select("employee_id")
+        .eq("status", "rejected")
+        .lte("start_date", todayStr)
+        .gte("end_date", todayStr),
+      supabase.from("locations").select("id, name"),
+      loadClassifyContext(supabase, todayStr, todayStr),
+    ]);
 
   type Emp = {
     id: string;
@@ -96,92 +74,52 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     shift_id: string | null;
     department_id: string | null;
   };
-  type Punch = {
-    employee_id: string;
-    work_type: string | null;
-    punch_type: string;
-    punched_at: string;
-  };
 
   const emps = (employees as Emp[]) ?? [];
-  const punchRows = (punches as Punch[]) ?? [];
-
-  // Shift start/end minutes by id + default fallback.
-  const shiftStart = new Map<string, number>();
-  const shiftEnd = new Map<string, number>();
-  let fbStart = FALLBACK_START;
-  let fbEnd = FALLBACK_END;
-  for (const s of (shifts as { id: string; start_time: string; end_time: string; is_default: boolean }[]) ?? []) {
-    const st = timeToMinutes(s.start_time);
-    const en = timeToMinutes(s.end_time);
-    shiftStart.set(s.id, st);
-    shiftEnd.set(s.id, en);
-    if (s.is_default) {
-      fbStart = st;
-      fbEnd = en;
-    }
-  }
-
-  // Late threshold by department + org default.
-  const lateByDept = new Map<string | null, number>();
-  for (const p of (policies as { department_id: string | null; late_threshold_min: number }[]) ?? []) {
-    lateByDept.set(p.department_id, p.late_threshold_min ?? DEFAULT_LATE);
-  }
-  const defaultLate = lateByDept.get(null) ?? DEFAULT_LATE;
-
+  const rejectedIds = new Set(
+    ((rejected as { employee_id: string }[]) ?? []).map((r) => r.employee_id)
+  );
   const locName = new Map(
     ((locations as { id: string; name: string }[]) ?? []).map((l) => [l.id, l.name])
-  );
-
-  // First punch in/out per employee.
-  const punchIn = new Map<string, Punch>();
-  const punchOut = new Map<string, Punch>();
-  for (const p of punchRows) {
-    if (p.punch_type === "in") punchIn.set(p.employee_id, p);
-    else if (p.punch_type === "out") punchOut.set(p.employee_id, p);
-  }
-  const presentIds = new Set(punchIn.keys());
-
-  // Leave sets.
-  const onLeaveIds = new Set<string>();
-  const rejectedIds = new Set<string>();
-  for (const r of (leaves as { employee_id: string; status: string }[]) ?? []) {
-    if (r.status === "pending" || r.status === "approved") onLeaveIds.add(r.employee_id);
-    else if (r.status === "rejected") rejectedIds.add(r.employee_id);
-  }
-  // LOP = rejected leave AND no punch AND not on leave.
-  const lopIds = new Set(
-    [...rejectedIds].filter((id) => !presentIds.has(id) && !onLeaveIds.has(id))
   );
 
   const rows: AttendanceTodayRow[] = [];
   const workType = { office: 0, wfh: 0, field: 0, event: 0 };
   const counts = { present: 0, late: 0, onLeave: 0, lop: 0, notPunched: 0, absent: 0 };
+  const presentIds = new Set<string>();
 
   for (const e of emps) {
-    const pin = punchIn.get(e.id) ?? null;
-    const pout = punchOut.get(e.id) ?? null;
-    const startMin = (e.shift_id && shiftStart.get(e.shift_id)) || fbStart;
-    const endMin = (e.shift_id && shiftEnd.get(e.shift_id)) || fbEnd;
-    const lateThreshold = lateByDept.get(e.department_id) ?? defaultLate;
-    const notYetJoined = !!e.date_of_joining && e.date_of_joining > todayStr;
-    const punchInMinutes = pin ? istMinutesOfDay(pin.punched_at) : null;
+    const day = ctx.classify(e, todayStr);
+    const sessions = ctx.sessionsOn(e.id, todayStr);
+    const closed = sessions.filter((s) => s.outIso !== null);
+    const last = closed[closed.length - 1] ?? null;
+    const shift = ctx.shiftFor(e);
+    const leave = ctx.leaveOn(e.id, todayStr);
+    const showedUp = day.parts.some((p) => WORK_STATUSES.includes(p));
+    if (showedUp) presentIds.add(e.id);
 
     const { status, isLate } = classifyTodayStatus({
-      notYetJoined,
-      onLeave: onLeaveIds.has(e.id),
-      lop: lopIds.has(e.id),
-      punchInMinutes,
-      shiftStartMinutes: startMin,
-      lateThresholdMin: lateThreshold,
+      notYetJoined: !!e.date_of_joining && e.date_of_joining > todayStr,
+      // Only a FULL-day leave takes someone off the floor; a half or 2-hour
+      // leave still expects them for the rest of the day.
+      onLeave: leave?.duration === "full_day",
+      lop: rejectedIds.has(e.id) && !showedUp && !leave,
+      punchInMinutes: sessions[0]?.inMin ?? null,
+      shiftStartMinutes: shift.startMin,
+      lateThresholdMin: ctx.lateThresholdFor(e.department_id),
+      day,
     });
 
-    if (pin) {
-      const wt = pin.work_type ?? "office";
-      if (wt === "office") workType.office++;
-      else if (wt === "wfh") workType.wfh++;
-      else if (wt === "client_visit") workType.field++;
-      else if (wt === "event") workType.event++;
+    if (showedUp) {
+      // Label the day by the work type covering the most parts.
+      const counted = { office: 0, wfh: 0, field: 0, event: 0 };
+      for (const p of day.parts) {
+        if (p === "office" || p === "wfh" || p === "field" || p === "event") counted[p]++;
+      }
+      const best = (Object.keys(counted) as (keyof typeof counted)[]).reduce((a, b) =>
+        counted[b] > counted[a] ? b : a
+      );
+      workType[best]++;
     }
 
     if (status === "present") counts.present++;
@@ -190,16 +128,25 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     else if (status === "lop") counts.lop++;
     else if (status === "not_punched") counts.notPunched++;
 
+    // The last expected part's end is the bar for leaving early; a half weekly
+    // off (Saturday) or an afternoon leave brings it forward.
+    const expectedEnd =
+      [...day.parts]
+        .map((p, k) => (WORK_STATUSES.includes(p) ? day.windows[k]?.endMin ?? null : null))
+        .filter((v): v is number => v !== null)
+        .pop() ?? shift.endMin;
+
     rows.push({
       employeeId: e.id,
       employeeName: e.name,
       locationName: e.location_id ? locName.get(e.location_id) ?? "—" : "—",
-      workType: pin?.work_type ?? "—",
-      punchIn: pin?.punched_at ?? null,
-      punchOut: pout?.punched_at ?? null,
+      workType: sessions[0]?.workType ?? (showedUp ? "client_visit" : "—"),
+      punchIn: sessions[0]?.inIso ?? null,
+      punchOut: last?.outIso ?? null,
       status,
       isLate,
-      isEarlyCheckout: pout ? isEarlyCheckout(istMinutesOfDay(pout.punched_at), endMin) : false,
+      isEarlyCheckout:
+        last?.outIso != null && isEarlyCheckout(istMinutesOfDay(last.outIso), expectedEnd),
     });
   }
 

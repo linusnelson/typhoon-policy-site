@@ -17,6 +17,7 @@ export interface LeaveRegisterRow {
   end_date: string;
   days_count: number;
   duration_type: string;
+  quarter_slot: number | null; // quarter_day only: which day part (1–4)
   status: LeaveStatus;
   reason: string | null;
   admin_comment: string | null;
@@ -47,6 +48,7 @@ type RawRow = {
   end_date: string;
   days_count: number;
   duration_type: string;
+  quarter_slot: number | null;
   status: LeaveStatus;
   reason: string | null;
   admin_comment: string | null;
@@ -65,7 +67,7 @@ type RawRow = {
 };
 
 const SELECT =
-  "id, employee_id, start_date, end_date, days_count, duration_type, status, " +
+  "id, employee_id, start_date, end_date, days_count, duration_type, quarter_slot, status, " +
   "reason, admin_comment, attachment_url, sandwich_days_included, reviewed_by, " +
   "reviewed_at, cancelled_at, created_at, " +
   "employees!leave_requests_employee_id_fkey(name, employee_code, department_id), " +
@@ -180,6 +182,7 @@ export async function listLeaveRegister(
     end_date: r.end_date,
     days_count: r.days_count,
     duration_type: r.duration_type,
+    quarter_slot: r.quarter_slot ?? null,
     status: r.status,
     reason: r.reason,
     admin_comment: r.admin_comment,

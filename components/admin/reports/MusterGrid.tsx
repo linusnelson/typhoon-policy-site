@@ -15,8 +15,8 @@ import {
 
 const WD = ["S", "M", "T", "W", "T", "F", "S"];
 
-// One day cell rendered as up to four 2-hour quarter slots. Contiguous equal
-// slots are merged; a letter shows on runs of half-day width or wider.
+// One day cell rendered as the four parts of the shift window. Contiguous equal
+// parts are merged; a letter shows on runs of half-day width or wider.
 function DayCell({ cell }: { cell: MusterCell }) {
   const runs = collapseQuarters(cell.quarters);
   return (
@@ -175,7 +175,9 @@ function Legend() {
           </span>
         );
       })}
-      <span className="text-xs text-gray-400">· split cell = AM / PM · P/L/A = present/leave/absent days</span>
+      <span className="text-xs text-gray-400">
+        · each cell = the 4 parts of the shift day · P/L/A = present/leave/absent days
+      </span>
     </div>
   );
 }

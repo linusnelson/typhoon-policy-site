@@ -169,6 +169,9 @@ export interface LeaveRequest {
   end_date: string;
   days_count: number;
   duration_type: LeaveDuration;
+  // quarter_day only: which of the four day parts (1–4) the 2-hour leave
+  // covers. NULL on legacy rows = part 1.
+  quarter_slot: number | null;
   reason: string | null;
   attachment_url: string | null;
   sandwich_days_included: number;

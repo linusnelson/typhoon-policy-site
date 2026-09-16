@@ -27,13 +27,14 @@ export async function savePolicy(
     return { ok: false, error: "Invalid late policy action." };
   }
 
+  // late_threshold_min IS the grace period. grace_period_min and the
+  // half/full-day hour thresholds are dead as of the day-parts engine (the
+  // shift defines the day, in four parts) — the columns stay for history, we
+  // just stop writing them.
   const payload = {
     org_id: admin.org_id,
     department_id: departmentId,
     late_threshold_min: num(formData, "late_threshold_min") ?? 15,
-    grace_period_min: num(formData, "grace_period_min") ?? 5,
-    half_day_min_hours: num(formData, "half_day_min_hours") ?? 4,
-    full_day_min_hours: num(formData, "full_day_min_hours") ?? 8,
     late_policy_action: action,
     lates_per_absent: num(formData, "lates_per_absent") ?? 3,
     wfh_days_per_month: num(formData, "wfh_days_per_month") ?? 4,

@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { Banner, Button, Input } from "@/components/ui";
 import { adminApplyLeave } from "@/actions/leave";
 import type { ActionState } from "@/lib/action-utils";
+import { DEFAULT_SHIFT, quarterSlotOptions, type ShiftTimes } from "@/lib/leave-status";
 
 const initial: ActionState = { ok: false };
 
@@ -25,15 +26,26 @@ export interface ApplyLeaveTypeOption {
 export function AdminApplyLeaveButton({
   employeeId,
   types,
+  shift = DEFAULT_SHIFT,
 }: {
   employeeId: string;
   types: ApplyLeaveTypeOption[];
+  shift?: ShiftTimes;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(adminApplyLeave, initial);
   const [typeId, setTypeId] = useState(types[0]?.id ?? "");
   const [duration, setDuration] = useState("full_day");
+  const [date, setDate] = useState("");
+  const slots = useMemo(
+    () =>
+      quarterSlotOptions(
+        shift,
+        date ? new Date(`${date}T00:00:00Z`).getUTCDay() : undefined
+      ),
+    [shift, date]
+  );
 
   const selected = useMemo(
     () => types.find((t) => t.id === typeId),
@@ -130,12 +142,33 @@ export function AdminApplyLeaveButton({
                 </select>
               </label>
 
+              {duration === "quarter_day" && (
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-ink">
+                    Which part of the day
+                  </span>
+                  <select name="quarterSlot" className={selectCls} defaultValue={1}>
+                    {slots.map((s) => (
+                      <option key={s.value} value={s.value} disabled={!s.window}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <span className="mb-1 block text-sm font-medium text-ink">
                     {duration === "full_day" ? "Start date" : "Date"}
                   </span>
-                  <Input name="startDate" type="date" required />
+                  <Input
+                    name="startDate"
+                    type="date"
+                    required
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
                 </label>
                 {duration === "full_day" && (
                   <label className="block">

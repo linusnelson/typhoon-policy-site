@@ -7,7 +7,22 @@ import { Banner, Button, Card, Textarea } from "@/components/ui";
 import { idleState } from "@/lib/action-utils";
 import { applyMyLeave } from "@/actions/employee-leave";
 import { computeLeaveDays, type LeaveDuration } from "@/lib/engine/leave-days";
+import { DEFAULT_SHIFT, quarterSlotOptions, type ShiftTimes } from "@/lib/leave-status";
 import type { ApplyLeaveType } from "@/lib/data/employee-leave";
+
+// Emergency leave: taken first, applied for after — mirrors MAX_BACKDATE_DAYS
+// in actions/employee-leave.ts.
+const MAX_BACKDATE_DAYS = 30;
+
+function shiftDate(dateKey: string, days: number): string {
+  const d = new Date(`${dateKey}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function weekdayOf(dateKey: string): number {
+  return new Date(`${dateKey}T00:00:00Z`).getUTCDay();
+}
 
 const selectCls =
   "w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-ink focus:border-brand focus:outline-none focus:ring-[3px] focus:ring-brand/30";
@@ -26,19 +41,34 @@ export function ApplyLeaveForm({
   types,
   holidays,
   today,
+  shift = DEFAULT_SHIFT,
 }: {
   types: ApplyLeaveType[];
   holidays: string[];
   today: string;
+  shift?: ShiftTimes;
 }) {
   const [state, action] = useActionState(applyMyLeave, idleState);
   const [typeId, setTypeId] = useState(types[0]?.id ?? "");
   const [duration, setDuration] = useState<LeaveDuration>("full_day");
+  const [quarterSlot, setQuarterSlot] = useState(1);
   const [start, setStart] = useState(today);
   const [end, setEnd] = useState(today);
 
   const selected = types.find((t) => t.id === typeId);
   const isMultiDay = duration === "full_day";
+
+  // Advance notice wins when the policy sets one; otherwise backdating is
+  // allowed up to the emergency window.
+  const minAdvance = selected?.minAdvanceDays ?? 0;
+  const minDate =
+    minAdvance > 0 ? shiftDate(today, minAdvance) : shiftDate(today, -MAX_BACKDATE_DAYS);
+  const isBackdated = start < today;
+
+  const slots = useMemo(
+    () => quarterSlotOptions(shift, start ? weekdayOf(start) : undefined),
+    [shift, start]
+  );
 
   const calc = useMemo(() => {
     if (!start) return null;
@@ -49,12 +79,15 @@ export function ApplyLeaveForm({
       durationType: duration,
       sandwichRuleEnabled: selected?.sandwichRuleEnabled ?? true,
       holidays,
+      quarterSlot: duration === "quarter_day" ? quarterSlot : null,
+      shift,
     });
-  }, [start, end, duration, isMultiDay, selected, holidays]);
+  }, [start, end, duration, quarterSlot, isMultiDay, selected, holidays, shift]);
 
   const requested = calc?.totalDays ?? 0;
   const insufficient =
     !!selected && !selected.isUnlimited && requested > selected.remaining;
+  const earnsNothing = !!calc && requested <= 0;
 
   return (
     <form action={action} className="space-y-5">
@@ -101,6 +134,28 @@ export function ApplyLeaveForm({
           </select>
         </div>
 
+        {/* Which part of the day a 2-hour leave covers */}
+        {duration === "quarter_day" && (
+          <div>
+            <label className={labelCls}>Which part of the day</label>
+            <select
+              name="quarterSlot"
+              className={selectCls}
+              value={quarterSlot}
+              onChange={(e) => setQuarterSlot(Number(e.target.value))}
+            >
+              {slots.map((s) => (
+                <option key={s.value} value={s.value} disabled={!s.window}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-400">
+              A 2-hour leave covers one part of the shift.
+            </p>
+          </div>
+        )}
+
         {/* Dates */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -110,11 +165,17 @@ export function ApplyLeaveForm({
               name="startDate"
               className={selectCls}
               value={start}
+              min={minDate}
               onChange={(e) => {
                 setStart(e.target.value);
                 if (!isMultiDay || end < e.target.value) setEnd(e.target.value);
               }}
             />
+            <p className="mt-1 text-xs text-gray-400">
+              {minAdvance > 0
+                ? `This leave type needs ${minAdvance} day(s) advance notice.`
+                : `Emergency or backdated leave: you can apply up to ${MAX_BACKDATE_DAYS} days after the fact.`}
+            </p>
           </div>
           {isMultiDay && (
             <div>
@@ -164,6 +225,25 @@ export function ApplyLeaveForm({
               {calc.weekendCount > 1 ? "s" : ""} excluded.
             </p>
           )}
+          {earnsNothing && (
+            <div className="flex items-start gap-2 text-sm font-semibold text-danger-deep">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                {calc.nonWorkingReason
+                  ? `Nothing to deduct — ${calc.nonWorkingReason}. Pick a working part of a working day.`
+                  : "This range has no working days to deduct."}
+              </span>
+            </div>
+          )}
+          {isBackdated && !earnsNothing && (
+            <div className="flex items-start gap-2 text-sm text-info-deep">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                Backdated request — this is recorded as emergency leave already
+                taken.
+              </span>
+            </div>
+          )}
           {insufficient && (
             <div className="flex items-start gap-2 text-sm font-semibold text-danger-deep">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -177,7 +257,7 @@ export function ApplyLeaveForm({
       )}
 
       <div className="flex items-center gap-3">
-        <SubmitButton blocked={insufficient || !selected} />
+        <SubmitButton blocked={insufficient || earnsNothing || !selected} />
         {selected && !selected.requiresApproval && (
           <span className="text-xs text-gray-400">
             This leave type is auto-approved.

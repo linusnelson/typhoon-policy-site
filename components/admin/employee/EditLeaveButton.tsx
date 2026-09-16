@@ -6,6 +6,7 @@ import { Pencil } from "lucide-react";
 import { Banner, Button, Input } from "@/components/ui";
 import { adminEditPendingLeave } from "@/actions/leave";
 import type { ActionState } from "@/lib/action-utils";
+import { DEFAULT_SHIFT, quarterSlotOptions, type ShiftTimes } from "@/lib/leave-status";
 import type { ApplyLeaveTypeOption } from "./AdminApplyLeaveButton";
 
 const initial: ActionState = { ok: false };
@@ -17,6 +18,7 @@ export interface EditableLeaveRequest {
   id: string;
   leaveTypeId: string | null;
   durationType: string;
+  quarterSlot: number | null;
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   reason: string;
@@ -29,16 +31,29 @@ export interface EditableLeaveRequest {
 export function EditLeaveButton({
   request,
   types,
+  shift = DEFAULT_SHIFT,
 }: {
   request: EditableLeaveRequest;
   types: ApplyLeaveTypeOption[];
+  shift?: ShiftTimes;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(adminEditPendingLeave, initial);
   const [typeId, setTypeId] = useState(request.leaveTypeId ?? types[0]?.id ?? "");
   const [duration, setDuration] = useState(request.durationType);
+  const [quarterSlot, setQuarterSlot] = useState(request.quarterSlot ?? 1);
+  const [date, setDate] = useState(request.startDate);
   const [daysOverride, setDaysOverride] = useState("");
+
+  const slots = useMemo(
+    () =>
+      quarterSlotOptions(
+        shift,
+        date ? new Date(`${date}T00:00:00Z`).getUTCDay() : undefined
+      ),
+    [shift, date]
+  );
 
   const selected = useMemo(
     () => types.find((t) => t.id === typeId),
@@ -140,6 +155,26 @@ export function EditLeaveButton({
                 </select>
               </label>
 
+              {duration === "quarter_day" && (
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-ink">
+                    Which part of the day
+                  </span>
+                  <select
+                    name="quarterSlot"
+                    className={selectCls}
+                    value={quarterSlot}
+                    onChange={(e) => setQuarterSlot(Number(e.target.value))}
+                  >
+                    {slots.map((s) => (
+                      <option key={s.value} value={s.value} disabled={!s.window}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <span className="mb-1 block text-sm font-medium text-ink">
@@ -149,7 +184,8 @@ export function EditLeaveButton({
                     name="startDate"
                     type="date"
                     required
-                    defaultValue={request.startDate}
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
                   />
                 </label>
                 {duration === "full_day" && (

@@ -1,27 +1,20 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
-import { getMonthAttendance, type DayStatus } from "@/lib/data/employee-attendance";
+import { getMonthAttendance } from "@/lib/data/employee-attendance";
+import {
+  describeParts,
+  fmtDays,
+  DAY_LABEL_TEXT,
+  DAY_LABEL_TONE,
+} from "@/lib/data/report-types";
 import { Badge } from "@/components/ui";
+import { PartsBar } from "@/components/employee/AttendanceView";
 import { RegularizeButton } from "./RegularizeButton";
 
 const MONTHS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
-
-const STATUS: Record<DayStatus, { label: string; tone: "success" | "warning" | "danger" | "info" | "neutral" | "brand" }> = {
-  present: { label: "Present", tone: "success" },
-  wfh: { label: "WFH", tone: "success" },
-  client_visit: { label: "Client visit", tone: "brand" },
-  event: { label: "Event", tone: "brand" },
-  late: { label: "Late", tone: "warning" },
-  half_day: { label: "Half day", tone: "warning" },
-  incomplete: { label: "No punch-out", tone: "warning" },
-  on_leave: { label: "On leave", tone: "info" },
-  absent: { label: "Absent", tone: "danger" },
-  holiday: { label: "Holiday", tone: "neutral" },
-  weekly_off: { label: "Weekly off", tone: "neutral" },
-};
 
 function shiftMonth(ym: string, delta: number): string {
   const [y, m] = ym.split("-").map(Number);
@@ -123,10 +116,10 @@ export async function AttendancePanel({
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="Present" value={String(stats.present)} />
-        <Stat label="Absent" value={String(stats.absent)} />
+        <Stat label="Present" value={fmtDays(stats.present)} />
+        <Stat label="Absent" value={fmtDays(stats.absent)} />
         <Stat label="Late" value={String(stats.late)} />
-        <Stat label="On leave" value={String(stats.leave)} />
+        <Stat label="On leave" value={fmtDays(stats.leave)} />
         <Stat label="Total hrs" value={totalHours.toFixed(1)} />
         <Stat label="OT hrs" value={ot.toFixed(1)} />
         <Stat label="Avg in" value={fmtMin(avgIn)} />
@@ -149,6 +142,7 @@ export async function AttendancePanel({
               <th className="px-4 py-3">In → Out</th>
               <th className="px-4 py-3">Hours</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Day parts</th>
               <th className="px-4 py-3">GPS</th>
               <th className="px-4 py-3 text-right">Correct</th>
             </tr>
@@ -156,13 +150,12 @@ export async function AttendancePanel({
           <tbody className="divide-y divide-gray-100">
             {days.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
+                <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
                   No attendance recorded this month.
                 </td>
               </tr>
             )}
             {days.map((d) => {
-              const s = STATUS[d.status];
               return (
                 <tr key={d.date} className="hover:bg-gray-50">
                   <td className="px-4 py-3 whitespace-nowrap text-gray-700">
@@ -179,7 +172,12 @@ export async function AttendancePanel({
                     {d.hours > 0 ? `${d.hours.toFixed(1)}h` : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge tone={s.tone}>{s.label}</Badge>
+                    <Badge tone={DAY_LABEL_TONE[d.status]}>
+                      {DAY_LABEL_TEXT[d.status]}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3" title={describeParts(d.parts)}>
+                    <PartsBar parts={d.parts} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2 text-xs">
