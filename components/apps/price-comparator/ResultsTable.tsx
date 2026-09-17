@@ -209,7 +209,8 @@ function OfferCell({
 function exportCsv(results: LineResult[], adjustments: Adjustments) {
   const header = [
     "MPN",
-    "Manufacturer",
+    "Make",
+    "Make (BOM)",
     "Qty",
     "Vendor",
     "Pick Source",
@@ -238,6 +239,9 @@ function exportCsv(results: LineResult[], adjustments: Adjustments) {
     const priced = Boolean(o) || adj?.priceOverrideUsd !== undefined;
     return [
       r.line.mpn,
+      // Make of the picked offer as the vendor reports it; the BOM's make when
+      // nothing was picked. "Make (BOM)" keeps exactly what was uploaded.
+      o?.manufacturer || r.line.manufacturer || "",
       r.line.manufacturer ?? "",
       r.line.qty,
       res.vendor ?? "NONE FOUND",
@@ -466,8 +470,10 @@ export function ResultsTable({
                   </td>
                   <td className={`${tdCls} font-mono text-[13px] font-semibold text-ink`}>
                     {r.line.mpn}
-                    {r.line.manufacturer && (
-                      <div className="font-sans text-xs font-normal text-gray-400">{r.line.manufacturer}</div>
+                    {(res.offer?.manufacturer || r.line.manufacturer) && (
+                      <div className="font-sans text-xs font-normal text-gray-400">
+                        {res.offer?.manufacturer || r.line.manufacturer}
+                      </div>
                     )}
                   </td>
                   <td className={tdCls}>{r.line.qty}</td>
