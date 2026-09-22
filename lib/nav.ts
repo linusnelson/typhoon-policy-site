@@ -28,6 +28,7 @@ import {
   Megaphone,
   LayoutGrid,
   AppWindow,
+  DatabaseBackup,
 } from "lucide-react";
 import { DEFAULT_MODULES, type EmployeeRole, type ModuleKey, type OrgModules } from "@/lib/types";
 
@@ -280,6 +281,7 @@ const NAV: NavGroup[] = [
         roles: ["admin"],
       },
       { label: "Reports", href: "/admin/reports", icon: BarChart3, roles: ["admin"] },
+      { label: "Backup", href: "/admin/backup", icon: DatabaseBackup, roles: ["admin"] },
       { label: "Settings", href: "/admin/settings", icon: Settings, roles: ["admin"] },
     ],
   },

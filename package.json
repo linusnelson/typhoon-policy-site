@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "tsx --test --experimental-test-module-mocks lib/engine/*.test.ts lib/data/*.test.mts lib/apps/**/*.test.ts",
+    "test": "tsx --test --experimental-test-module-mocks lib/engine/*.test.ts lib/data/*.test.mts lib/apps/**/*.test.ts lib/backup/*.test.ts",
     "seed": "tsx scripts/seed-split.ts",
     "seed:split": "tsx scripts/seed-split.ts",
     "seed:single": "tsx scripts/seed-policy.ts"
@@ -16,6 +16,7 @@
     "@react-pdf/renderer": "^4.1.6",
     "@supabase/ssr": "^0.12.1",
     "@supabase/supabase-js": "^2.110.4",
+    "fflate": "^0.8.3",
     "heic2any": "^0.0.4",
     "lucide-react": "^1.18.0",
     "next": "^15.5.19",

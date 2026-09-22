@@ -45,6 +45,9 @@ export async function updateSession(request: NextRequest) {
     path === "/pending" ||
     path.startsWith("/invite") ||
     path.startsWith("/auth") ||
+    // Scheduled jobs (Vercel Cron) carry no session; each route verifies the
+    // CRON_SECRET bearer itself and 401s anything else.
+    path.startsWith("/api/cron/") ||
     path.startsWith("/_next") ||
     path === "/favicon.ico";
 
