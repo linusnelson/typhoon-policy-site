@@ -1,0 +1,40 @@
+{
+  "sourceFile": "BID7000667289.PDF",
+  "rfxNo": "7000667289",
+  "plant": "CHN/CH1/044-22326906 31.08.2026 15:40",
+  "dueDate": "2026-09-16",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "461575590183",
+      "desc": "CON CIRS BAY RP M13 CRP",
+      "qty": "20",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "AERO-ELECTRIC CONNECTOR, INC.-MS27472T10B35PN",
+          "make": "AERO-ELECTRIC CONNECTOR, INC.",
+          "mpn": "MS27472T10B35PN"
+        },
+        {
+          "raw": "ITT CANNON / ELECTRON TUBE DIVISION-MS27472T10B35PN",
+          "make": "ITT CANNON / ELECTRON TUBE DIVISION",
+          "mpn": "MS27472T10B35PN"
+        },
+        {
+          "raw": "MATRIX SCIENCE CORPN.-J MS27472T10B35P",
+          "make": "MATRIX SCIENCE CORPN.-J",
+          "mpn": "MS27472T10B35P"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,56 @@
+{
+  "sourceFile": "BID7000668909.PDF",
+  "rfxNo": "7000668909",
+  "plant": "BG/C3/080-22195661 07.09.2026 12:03",
+  "dueDate": "2026-09-22",
+  "endTime": "11:00:00",
+  "contact": [
+    "BEPO / 1178 / Super Components (SUPC)",
+    "C3 / Head SC Purchase / 080-22195661"
+  ],
+  "notes": [
+    "ITEM SHOULD BE DELIVERED BY 31.12.2026 AND EARLY DELIVERY IS ACCEPTABLE."
+  ],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "464700800591",
+      "desc": "CONN ACCE MICRO-D JP ASSY 9-51 RoHS",
+      "qty": "1000",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "AIRBORN INTERCONNECT, INC.-M83513/05-07",
+          "make": "AIRBORN INTERCONNECT, INC.",
+          "mpn": "M83513/05-07"
+        },
+        {
+          "raw": "AMPHENOL CANADA CORPORATION-HM05-07",
+          "make": "AMPHENOL CANADA CORPORATION",
+          "mpn": "HM05-07"
+        },
+        {
+          "raw": "AMPHENOL CANADA CORPORATION-M83513/05-07",
+          "make": "AMPHENOL CANADA CORPORATION",
+          "mpn": "M83513/05-07"
+        },
+        {
+          "raw": "GLENAIR INC-M83513/05-07",
+          "make": "GLENAIR INC",
+          "mpn": "M83513/05-07"
+        },
+        {
+          "raw": "ITT CANNON-M83513/05-07",
+          "make": "ITT CANNON",
+          "mpn": "M83513/05-07"
+        },
+        {
+          "raw": "TYCO ELECTRONICS CORPORATION-M83513/05-07",
+          "make": "TYCO ELECTRONICS CORPORATION",
+          "mpn": "M83513/05-07"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

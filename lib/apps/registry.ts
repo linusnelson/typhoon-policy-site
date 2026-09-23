@@ -13,6 +13,7 @@ export interface AppDef {
 }
 
 export const PRICE_COMPARATOR_SLUG = "price-comparator";
+export const BEL_RFX_SLUG = "bel-rfx";
 
 export const APPS: AppDef[] = [
   {
@@ -20,6 +21,12 @@ export const APPS: AppDef[] = [
     name: "PriceProbe",
     description:
       "Price an electronics BOM across DigiKey, Mouser and element14 India, and pick the best vendor per line.",
+  },
+  {
+    slug: BEL_RFX_SLUG,
+    name: "BEL RFx Extractor",
+    description:
+      "Turn BEL Bid Invitation PDFs into tracking-sheet rows: RFx, plant, due date, BEL PN, make, MPN, qty.",
   },
 ];
 
