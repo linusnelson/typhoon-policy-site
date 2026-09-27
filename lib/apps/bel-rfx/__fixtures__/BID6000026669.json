@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID6000026669.PDF",
+  "rfxNo": "6000026669",
+  "plant": "CHN/CH1/044-22326906 25.09.2026 17:23",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "404312945512",
+      "desc": "CAP FXD CERG CH 2.2F \u00b110% 6.3V",
+      "qty": "40",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "KEMET ELECTRONICS CORPORATION,-C0402C225K9PAC.",
+          "make": "KEMET ELECTRONICS CORPORATION",
+          "mpn": "C0402C225K9PAC."
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

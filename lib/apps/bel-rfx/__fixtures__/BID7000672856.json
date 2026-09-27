@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000672856.PDF",
+  "rfxNo": "7000672856",
+  "plant": "CHN/CH1/044-22326906 22.09.2026 14:22",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "436375170118",
+      "desc": "IC DGTL LATCH OCTAL 74FCT573 QSOP",
+      "qty": "13",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "NU HORIZONS ELECTRONICS-CY74FCT573CTQC",
+          "make": "NU HORIZONS ELECTRONICS",
+          "mpn": "CY74FCT573CTQC"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

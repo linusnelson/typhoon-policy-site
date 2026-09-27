@@ -1,0 +1,32 @@
+{
+  "sourceFile": "BID7000673056.PDF",
+  "rfxNo": "7000673056",
+  "plant": "PUNE/PN3/020-22903622 23.09.2026 10:36",
+  "dueDate": "2026-09-29",
+  "endTime": "14:00:00",
+  "contact": [
+    "BEPO / 1910 / Pune BEL Plant",
+    "PN3 / Head Purchase PN / 020-22903622",
+    "dineshkumar91@bel.co.in"
+  ],
+  "notes": [
+    "GST amount will be released only after the same is reflected in BEL GST portal (GSTR-2B) and taxes are paid by supplier to the government. (As applicable)"
+  ],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "463680140110",
+      "desc": "CONN FEMALE CRIMP HP,2PIN",
+      "qty": "44",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "NICOMATIC-222E00M16-0002-4320",
+          "make": "NICOMATIC",
+          "mpn": "222E00M16-0002-4320"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000673051.PDF",
+  "rfxNo": "7000673051",
+  "plant": "MC/MC1/08672-222478 23.09.2026 10:23",
+  "dueDate": "2026-09-29",
+  "endTime": "23:00:00",
+  "contact": [
+    "BEPO / 1610 / Machilipatnam BEL Plant",
+    "MC1 / Head Purchase -MC / 08672-222478",
+    "mmbelmc@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "380182460182",
+      "desc": "COMPRESSION SPRING FC",
+      "qty": "8",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "LEE SPRING-LP-029N-02",
+          "make": "LEE SPRING",
+          "mpn": "LP-029N-02"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

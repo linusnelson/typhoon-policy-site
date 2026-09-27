@@ -1,0 +1,35 @@
+{
+  "sourceFile": "BID7000672969.PDF",
+  "rfxNo": "7000672969",
+  "plant": "CHN/CH1/044-22326906 22.09.2026 16:25",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "437000100475",
+      "desc": "IC MUX/DEMUX 16-SOIC 4051B.",
+      "qty": "80",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "ON SEMICONDUCTOR-MC14051BD",
+          "make": "ON SEMICONDUCTOR",
+          "mpn": "MC14051BD"
+        },
+        {
+          "raw": "TEXAS INSTRUMENTS INC-CD4051BM",
+          "make": "TEXAS INSTRUMENTS INC",
+          "mpn": "CD4051BM"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

@@ -13,6 +13,14 @@ export function splitMake(raw: string): { make: string; mpn: string } {
     }
   }
 
+  // 0. SAP joins make and MPN with a bare hyphen, so a comma right before a
+  //    hyphen can only be the tail of the make ("CAPLUGS,-CEC-19"). Split
+  //    there and drop the dangling comma.
+  const commaJoin = line.indexOf(",-");
+  if (commaJoin > 0) {
+    return { make: line.slice(0, commaJoin).trim(), mpn: line.slice(commaJoin + 2).trim() };
+  }
+
   const hyphens: number[] = [];
   for (let i = 0; i < line.length; i++) if (line[i] === "-") hyphens.push(i);
   if (hyphens.length === 0) return { make: line, mpn: "" };
@@ -20,9 +28,14 @@ export function splitMake(raw: string): { make: string; mpn: string } {
   // 1. First hyphen whose next token (up to a space or hyphen) has a digit,
   //    or is a lone designator letter followed by such a token ("-J MS27…-1").
   for (const i of hyphens) {
-    const after = line.slice(i + 1);
+    // SAP sometimes prints a space after the join hyphen ("RAYCHEM LTD- 202K142-25-O").
+    const after = line.slice(i + 1).trimStart();
     const token = /^[^\s-]*/.exec(after)![0];
     if (/\d/.test(token) || /^[A-Z]\s+[^\s-]*\d/.test(after)) return cut(line, i);
+    // A short all-caps token (1–3 letters) right after the hyphen is an MPN
+    // prefix, not a word of the make: "LEE SPRING-LP-029N-02",
+    // "THERMO CABLES LIMITED-JSS 6145-31", "XILINX CORPORATION- HW-USB-II-G".
+    if (/^[A-Z]{1,3}(?=[\s-]|$)/.test(after)) return cut(line, i);
   }
   // 2. First hyphen where anything after it has a digit ("CORPN.-J MS27472…").
   for (const i of hyphens) {

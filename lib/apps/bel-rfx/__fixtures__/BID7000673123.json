@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000673123.PDF",
+  "rfxNo": "7000673123",
+  "plant": "BG/N3/080-22195399 23.09.2026 13:12",
+  "dueDate": "2026-09-29",
+  "endTime": "23:00:00",
+  "contact": [
+    "BEPO / 1120 / Naval System (NS)",
+    "N3 / Hd,NS---Pur(CS) / 080-22195399",
+    "purcs@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "463615580596",
+      "desc": "CON D TYPE 104 PIN FEMALE ST PCB MOUNT",
+      "qty": "1",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "POSITRONIC INDUSTRIES INC-DD104S3000C-50",
+          "make": "POSITRONIC INDUSTRIES INC",
+          "mpn": "DD104S3000C-50"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

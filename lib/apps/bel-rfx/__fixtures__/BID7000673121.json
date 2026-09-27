@@ -1,0 +1,44 @@
+{
+  "sourceFile": "BID7000673121.PDF",
+  "rfxNo": "7000673121",
+  "plant": "BG/N3/080-22195399 23.09.2026 13:11",
+  "dueDate": "2026-09-29",
+  "endTime": "23:00:00",
+  "contact": [
+    "BEPO /",
+    "N3 / Hd,NS---Pur(CS) / 080-22195399",
+    "purcs@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "475112190249",
+      "desc": "FUSE HOLDER CAP",
+      "qty": "6",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "SCHURTER AG,-0032.0770",
+          "make": "SCHURTER AG",
+          "mpn": "0032.0770"
+        }
+      ]
+    },
+    {
+      "itemNo": "20",
+      "belPn": "475112190152",
+      "desc": "FUSE HOLDER SOCKET WITH LAMP",
+      "qty": "6",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "SCHURTER AG,-MEL0032.0706",
+          "make": "SCHURTER AG",
+          "mpn": "MEL0032.0706"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

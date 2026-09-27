@@ -1,0 +1,33 @@
+{
+  "sourceFile": "BID7000667028.PDF",
+  "rfxNo": "7000667028",
+  "plant": "GAD/GD4/0120-2814056 31.08.2026 09:33",
+  "dueDate": "2026-09-28",
+  "endTime": "23:00:00",
+  "contact": [
+    "BEPO / 1360 / DCCS SBU-GAD",
+    "GD4 / Purchase Head GD4 / 0120-2814056",
+    "gadncspurgn4@bel.co.in"
+  ],
+  "notes": [
+    "1 IN CASE OF ALTERNATE MPN PLS TAKE APPROVAL BEFORE SUMISSION OF QUOTE VIA MAIL. AFTER SUBMISSION ALTERNATE MPN QUOTE BY L1 VENDOR MAY NOT BE CONSIDERED.",
+    "2 YOU ARE REQUESTED TO SUBMIT PRICE & RFQ TERMS COMPLIANCE TOGETHER IN SRM PORTAL. IF COMPLIANCE OF ALL TERMS OF RFQ-T&C IS NOT SUBMITTED WITH BID RESPONSE, THEN YOUR RESPONSE SUBMITTED AGAINST BID IS CONSIDERED AS COMPLIANCE OF ALL TERMS OF RFQ T&C."
+  ],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "314040500113",
+      "desc": "SOLDER WIRE",
+      "qty": "9",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "MULTICORE SOLDERS-96SC5025C0.50MM",
+          "make": "MULTICORE SOLDERS",
+          "mpn": "96SC5025C0.50MM"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

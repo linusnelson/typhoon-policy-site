@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000671978.PDF",
+  "rfxNo": "7000671978",
+  "plant": "CHN/CH1/044-22326906 17.09.2026 11:54",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "457975840158",
+      "desc": "CONVERTER 1A 5VDC P 9-36VDC I/P",
+      "qty": "6",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "VITEC POWER GMBH-VTW05-2405S-E",
+          "make": "VITEC POWER GMBH",
+          "mpn": "VTW05-2405S-E"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

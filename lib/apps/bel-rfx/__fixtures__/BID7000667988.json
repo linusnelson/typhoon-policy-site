@@ -1,0 +1,69 @@
+{
+  "sourceFile": "BID7000667988.PDF",
+  "rfxNo": "7000667988",
+  "plant": "BG/EP/080-22197234 02.09.2026 13:56",
+  "dueDate": "2026-09-23",
+  "endTime": "11:00:00",
+  "contact": [
+    "BEPO / 1160 / Mass Mfg. Facility (MMF)",
+    "EP / Head EM Purchase / 080-22197234",
+    "purscem1@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "313011070153",
+      "desc": "CRIMPING TOOL.",
+      "qty": "3",
+      "unit": "NO",
+      "makes": []
+    },
+    {
+      "itemNo": "20",
+      "belPn": "313012740105",
+      "desc": "CRIMPING TOOL",
+      "qty": "3",
+      "unit": "NO",
+      "makes": []
+    },
+    {
+      "itemNo": "30",
+      "belPn": "313012210194",
+      "desc": "CRIMPING TOOL",
+      "qty": "3",
+      "unit": "NO",
+      "makes": []
+    },
+    {
+      "itemNo": "40",
+      "belPn": "340359044901",
+      "desc": "HARTING CRIMPING TOOL 2990000010",
+      "qty": "3",
+      "unit": "NO",
+      "makes": []
+    }
+  ],
+  "warnings": [
+    {
+      "code": "no_makes",
+      "message": "Item 10: no make/MPN lines",
+      "itemNo": "10"
+    },
+    {
+      "code": "no_makes",
+      "message": "Item 20: no make/MPN lines",
+      "itemNo": "20"
+    },
+    {
+      "code": "no_makes",
+      "message": "Item 30: no make/MPN lines",
+      "itemNo": "30"
+    },
+    {
+      "code": "no_makes",
+      "message": "Item 40: no make/MPN lines",
+      "itemNo": "40"
+    }
+  ]
+}

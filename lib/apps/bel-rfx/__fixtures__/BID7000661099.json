@@ -1,0 +1,40 @@
+{
+  "sourceFile": "BID7000661099.PDF",
+  "rfxNo": "7000661099",
+  "plant": "CHN/CH1/044-22326906 10.08.2026 09:17",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "476670810111",
+      "desc": "PLATFORM CABLE USB II",
+      "qty": "2",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "XILINX CORPORATION- HW-USB-II-G",
+          "make": "XILINX CORPORATION",
+          "mpn": "HW-USB-II-G"
+        },
+        {
+          "raw": "XILINX CORPORATION-DLC 10",
+          "make": "XILINX CORPORATION",
+          "mpn": "DLC 10"
+        },
+        {
+          "raw": "XILINX CORPORATION-DLC10",
+          "make": "XILINX CORPORATION",
+          "mpn": "DLC10"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

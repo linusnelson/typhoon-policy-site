@@ -1,0 +1,128 @@
+{
+  "sourceFile": "BID7000672667.PDF",
+  "rfxNo": "7000672667",
+  "plant": "CHN/CH1/044-22326906 22.09.2026 09:32",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "463601100242",
+      "desc": "CON RECTU M15/7.5A SHL PLZN CRP",
+      "qty": "10",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "ADI ELECTRONICS INC-M24308/4-7F",
+          "make": "ADI ELECTRONICS INC",
+          "mpn": "M24308/4-7F"
+        },
+        {
+          "raw": "AMPHENOL INTERCONNECT INDIA PVT LTD- M24308/4-7F",
+          "make": "AMPHENOL INTERCONNECT INDIA PVT LTD",
+          "mpn": "M24308/4-7F"
+        },
+        {
+          "raw": "AMPHENOL FCI INDIA PRIVATE LIMITED-SAMAT 15P",
+          "make": "AMPHENOL FCI INDIA PRIVATE LIMITED",
+          "mpn": "SAMAT 15P"
+        },
+        {
+          "raw": "CRISTEK INTERCONNECTS, LLC.-M24308/4-7F",
+          "make": "CRISTEK INTERCONNECTS, LLC.",
+          "mpn": "M24308/4-7F"
+        },
+        {
+          "raw": "ITT CANNON-M24308/4-7F",
+          "make": "ITT CANNON",
+          "mpn": "M24308/4-7F"
+        },
+        {
+          "raw": "SOURIAU-M24308/ 4-7F",
+          "make": "SOURIAU",
+          "mpn": "M24308/ 4-7F"
+        },
+        {
+          "raw": "TYCO ELECTRONICS CORPORATION-M24308/4-7F",
+          "make": "TYCO ELECTRONICS CORPORATION",
+          "mpn": "M24308/4-7F"
+        }
+      ]
+    },
+    {
+      "itemNo": "20",
+      "belPn": "463601100339",
+      "desc": "CON RECTU M25/7.5A SHL PLZN CRP",
+      "qty": "10",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "TYCO ELECTRONICS CORPORATION-M24308/4-8F",
+          "make": "TYCO ELECTRONICS CORPORATION",
+          "mpn": "M24308/4-8F"
+        },
+        {
+          "raw": "AMPHENOL INTERCONNECT INDIA PVT LTD- M24308/4-8F",
+          "make": "AMPHENOL INTERCONNECT INDIA PVT LTD",
+          "mpn": "M24308/4-8F"
+        },
+        {
+          "raw": "AMPHENOL FCI INDIA PRIVATE LIMITED-SBMAT 25P",
+          "make": "AMPHENOL FCI INDIA PRIVATE LIMITED",
+          "mpn": "SBMAT 25P"
+        },
+        {
+          "raw": "ITT CANNON-M24308/4-8F",
+          "make": "ITT CANNON",
+          "mpn": "M24308/4-8F"
+        },
+        {
+          "raw": "SOURIAU-M24308/ 4-8F",
+          "make": "SOURIAU",
+          "mpn": "M24308/ 4-8F"
+        }
+      ]
+    },
+    {
+      "itemNo": "30",
+      "belPn": "463601100436",
+      "desc": "CON RECTU M37/7.5A SHL PLZN CRP",
+      "qty": "10",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "TYCO ELECTRONICS CORPORATION-M24308/4-9F",
+          "make": "TYCO ELECTRONICS CORPORATION",
+          "mpn": "M24308/4-9F"
+        },
+        {
+          "raw": "AMPHENOL INTERCONNECT INDIA PVT LTD- M24308/4-9F",
+          "make": "AMPHENOL INTERCONNECT INDIA PVT LTD",
+          "mpn": "M24308/4-9F"
+        },
+        {
+          "raw": "AMPHENOL FCI INDIA PRIVATE LIMITED-SCMAT 37P",
+          "make": "AMPHENOL FCI INDIA PRIVATE LIMITED",
+          "mpn": "SCMAT 37P"
+        },
+        {
+          "raw": "ITT CANNON-M24308/4-9F",
+          "make": "ITT CANNON",
+          "mpn": "M24308/4-9F"
+        },
+        {
+          "raw": "SOURIAU-M24308/ 4-9F",
+          "make": "SOURIAU",
+          "mpn": "M24308/ 4-9F"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

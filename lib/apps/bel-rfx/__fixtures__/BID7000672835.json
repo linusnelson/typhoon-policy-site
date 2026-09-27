@@ -1,0 +1,72 @@
+{
+  "sourceFile": "BID7000672835.PDF",
+  "rfxNo": "7000672835",
+  "plant": "CHN/CH1/044-22326906 22.09.2026 13:56",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "432975060158",
+      "desc": "IC LIN VCOMPTR CMOS , 2901",
+      "qty": "446",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "NATIONAL SEMICONDUCTOR-LM2901-M",
+          "make": "NATIONAL SEMICONDUCTOR",
+          "mpn": "LM2901-M"
+        }
+      ]
+    },
+    {
+      "itemNo": "20",
+      "belPn": "432875140167",
+      "desc": "IC LIN VREG, FXD (3.3V,1.5A ), 3852",
+      "qty": "94",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "NATIONAL SEMICONDUCTOR-LP3852ES-3.3",
+          "make": "NATIONAL SEMICONDUCTOR",
+          "mpn": "LP3852ES-3.3"
+        }
+      ]
+    },
+    {
+      "itemNo": "30",
+      "belPn": "432875130273",
+      "desc": "IC LIN VREG, ADJ 1.2V to 5.1V , 3964",
+      "qty": "6",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "NATIONAL SEMICONDUCTOR-LP3964ES-ADJ",
+          "make": "NATIONAL SEMICONDUCTOR",
+          "mpn": "LP3964ES-ADJ"
+        }
+      ]
+    },
+    {
+      "itemNo": "40",
+      "belPn": "432875130176",
+      "desc": "IC LIN VREG(1.8V,800mA ), 3961",
+      "qty": "87",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "NATIONAL SEMICONDUCTOR-LP3961ES-1.8",
+          "make": "NATIONAL SEMICONDUCTOR",
+          "mpn": "LP3961ES-1.8"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000672585.PDF",
+  "rfxNo": "7000672585",
+  "plant": "HYD/HD2/040-27194466 21.09.2026 16:25",
+  "dueDate": "2026-09-29",
+  "endTime": "13:00:00",
+  "contact": [
+    "BEPO / 1410 / EW - Naval Systems (EW-NS) Hyd",
+    "HD2 / Head Purchase-hyd / 040-27194466",
+    "purchasehyd.hd2@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "485900800588",
+      "desc": "WIRE LFH 600V 19/0.12 OD1.05 WH JSS 6145",
+      "qty": "5866",
+      "unit": "M",
+      "makes": [
+        {
+          "raw": "TE CONNECTIVITY PTE LTD.-99M0111-24-9",
+          "make": "TE CONNECTIVITY PTE LTD.",
+          "mpn": "99M0111-24-9"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

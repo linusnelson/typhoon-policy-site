@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000672771.PDF",
+  "rfxNo": "7000672771",
+  "plant": "CHN/CH1/044-22326906 22.09.2026 11:23",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "437485620104",
+      "desc": "SDR SDRAM 128MB 1MEG x32x4 BANKS",
+      "qty": "8",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "ISSI-IS45S32200L-7TLA2",
+          "make": "ISSI",
+          "mpn": "IS45S32200L-7TLA2"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

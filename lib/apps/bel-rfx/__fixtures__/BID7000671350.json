@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000671350.PDF",
+  "rfxNo": "7000671350",
+  "plant": "CHN/CH1/044-22326906 15.09.2026 11:59",
+  "dueDate": "2026-09-24",
+  "endTime": "12:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "475875480145",
+      "desc": "LUG PIN",
+      "qty": "174",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "UNIVERSAL TOOLS & ENGINEERS,-LUG PIN-2.5",
+          "make": "UNIVERSAL TOOLS & ENGINEERS",
+          "mpn": "LUG PIN-2.5"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000671960.PDF",
+  "rfxNo": "7000671960",
+  "plant": "CHN/CH1/044-22326906 17.09.2026 11:20",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "457975980614",
+      "desc": "CONVERTER 8.33A 12V P 9-36V I/P",
+      "qty": "185",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "VICOR CORPORATION-V28C12T100BG3",
+          "make": "VICOR CORPORATION",
+          "mpn": "V28C12T100BG3"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

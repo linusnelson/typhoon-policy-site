@@ -1,0 +1,40 @@
+{
+  "sourceFile": "BID7000672905.PDF",
+  "rfxNo": "7000672905",
+  "plant": "CHN/CH1/044-22326906 22.09.2026 15:16",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "423200600145",
+      "desc": "DIODE RECT FRCVY JAN1N4946",
+      "qty": "11",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "MICROCHIP TECHNOLOGY INC-JAN1N4946",
+          "make": "MICROCHIP TECHNOLOGY INC",
+          "mpn": "JAN1N4946"
+        },
+        {
+          "raw": "SEMTECH CORPORATION-JAN1N4946",
+          "make": "SEMTECH CORPORATION",
+          "mpn": "JAN1N4946"
+        },
+        {
+          "raw": "SENSITRON SEMICONDUCTOR-JAN1N4946",
+          "make": "SENSITRON SEMICONDUCTOR",
+          "mpn": "JAN1N4946"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

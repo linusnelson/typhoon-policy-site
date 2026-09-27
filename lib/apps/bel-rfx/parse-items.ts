@@ -21,7 +21,8 @@ const SKIP_RE = [
   /^\d{10}$/, // RFx number in the running page header
   /@/, // recipient e-mail list
 ];
-const QTY_RE = /^([\d,.]+)\s+(\S+)$/;
+const QTY_RE = /^([\d,.]+)\s+([A-Z]{1,4})$/;
+const TIME_RE = /^\d{2}:\d{2}:\d{2}$/;
 
 function nearest(x: number, cols: Columns): keyof Columns | null {
   let best: keyof Columns | null = null;
@@ -53,39 +54,44 @@ export function parseItems(lines: Line[]): { items: BidItem[]; warnings: Warning
     const text = line.text.trim();
     if (SKIP_RE.some((re) => re.test(text))) continue;
 
-    // Header row: refresh the column positions, then skip it.
+    // Header row: refresh the column positions, then skip it. Two SAP variants
+    // exist: "Item | Material No. | Description | Qty/Unit" (7-series RFx) and
+    // "Item | Item category | Supplier product number | Delivery date/ |
+    // Delivery Date" (6-series), where the quantity is printed under the
+    // delivery-date column. Quantity is therefore found by shape (§ item row),
+    // not by column.
     const headerCells = line.cells.map((c) => c.text);
-    if (headerCells.includes("Item") && headerCells.includes("Material No.")) {
-      const at = (label: string, fallback: number) =>
-        line.cells.find((c) => c.text === label)?.x ?? fallback;
+    if (headerCells.includes("Item") && (headerCells.includes("Material No.") || headerCells.includes("Item category"))) {
+      const at = (labels: string[], fallback: number) =>
+        line.cells.find((c) => labels.includes(c.text))?.x ?? fallback;
       cols = {
-        item: at("Item", cols.item),
-        material: at("Material No.", cols.material),
-        desc: at("Description", cols.desc),
-        qty: at("Qty/Unit", cols.qty),
+        item: at(["Item"], cols.item),
+        material: at(["Material No.", "Item category"], cols.material),
+        desc: at(["Description", "Supplier product number"], cols.desc),
+        qty: at(["Qty/Unit"], cols.qty),
       };
       continue;
     }
 
-    const byCol = new Map<keyof Columns, string>();
-    for (const c of line.cells) {
-      const key = nearest(c.x, cols);
-      if (key && !byCol.has(key)) byCol.set(key, c.text);
-    }
+    const itemCell = line.cells.find((c) => nearest(c.x, cols) === "item")?.text;
+    const materialCell = line.cells.find((c) => nearest(c.x, cols) === "material")?.text;
 
-    // Item row: an integer under Item and something under Material No.
-    const itemCell = byCol.get("item");
-    const materialCell = byCol.get("material");
+    // Item row: an integer under Item and something under Material No. The
+    // rest of the row holds the description and, somewhere to its right, the
+    // quantity ("21 NO", "1,000 NO"); a delivery time ("00:00:00") may follow.
     if (itemCell && materialCell && /^\d+$/.test(itemCell)) {
+      const rest = line.cells.filter((c) => c.x > cols.material + COLUMN_TOLERANCE);
+      const qtyCell = rest.find((c) => QTY_RE.test(c.text));
+      const descCell = rest.find((c) => c !== qtyCell && !TIME_RE.test(c.text));
       current = {
         itemNo: itemCell,
         belPn: materialCell,
-        desc: byCol.get("desc") ?? "",
+        desc: descCell?.text ?? "",
         qty: "",
         unit: "",
         makes: [],
       };
-      applyQty(current, byCol.get("qty"));
+      applyQty(current, qtyCell?.text);
       items.push(current);
       continue;
     }
@@ -104,10 +110,10 @@ export function parseItems(lines: Line[]): { items: BidItem[]; warnings: Warning
             itemNo: current.itemNo,
           });
         }
+      } else if (!current.qty && QTY_RE.test(text) && line.cells[0].x > cols.desc + COLUMN_TOLERANCE) {
+        applyQty(current, text);
       } else if (key === "desc") {
         current.desc = current.desc ? `${current.desc} ${text}` : text;
-      } else if (key === "qty" && !current.qty) {
-        applyQty(current, text);
       }
     }
   }
@@ -126,6 +132,8 @@ function applyQty(item: BidItem, cell: string | undefined) {
   if (!cell) return;
   const m = QTY_RE.exec(cell.trim());
   if (!m) return;
-  item.qty = m[1].replace(/,/g, "");
+  // "1,000" → 1000, "5,866.000" → 5866, "1,118.500" → 1118.5
+  const n = Number(m[1].replace(/,/g, ""));
+  item.qty = Number.isFinite(n) ? String(n) : m[1].replace(/,/g, "");
   item.unit = m[2];
 }

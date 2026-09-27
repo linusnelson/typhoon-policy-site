@@ -1,0 +1,32 @@
+{
+  "sourceFile": "BID7000673145.PDF",
+  "rfxNo": "7000673145",
+  "plant": "CHN/CH1/044-22326906 23.09.2026 13:59",
+  "dueDate": "2026-09-30",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [
+    "SUFFICIENT CARE SHOULD BE TAKEN WHILE PACKING TO AVOID ANY TRANSIT DAMAGES. ITEMS RECEIVED WITH DAMAGES FOUND DURING INWARD GOOD RECEIPT WILL BE REJECTED AND VENDOR TO REPLACE THE DAMAGED PARTS AT OWN COST."
+  ],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "995785750172",
+      "desc": "FASTENERS KIT - ALNS MK II",
+      "qty": "1",
+      "unit": "KIT",
+      "makes": []
+    }
+  ],
+  "warnings": [
+    {
+      "code": "no_makes",
+      "message": "Item 10: no make/MPN lines",
+      "itemNo": "10"
+    }
+  ]
+}

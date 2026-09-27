@@ -1,0 +1,35 @@
+{
+  "sourceFile": "BID7000670516.PDF",
+  "rfxNo": "7000670516",
+  "plant": "BG/B1/080-22190203 11.09.2026 11:24",
+  "dueDate": "2026-09-24",
+  "endTime": "08:00:00",
+  "contact": [
+    "BEPO / 1140 / Strategic Commun & Unmanned Sy",
+    "B1 / Head BTV Purchase / 080-22190203",
+    "purtbs@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "456676490723",
+      "desc": "MCB 2P-B40A IN",
+      "qty": "7",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "SCHNEIDER ELECTRIC INDIA LTD- A9N2P40BIN",
+          "make": "SCHNEIDER ELECTRIC INDIA LTD",
+          "mpn": "A9N2P40BIN"
+        },
+        {
+          "raw": "SCHNEIDER ELECTRIC INDIA LTD-A9N2P40BIN",
+          "make": "SCHNEIDER ELECTRIC INDIA LTD",
+          "mpn": "A9N2P40BIN"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

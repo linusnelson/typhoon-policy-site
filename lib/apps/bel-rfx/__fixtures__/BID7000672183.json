@@ -1,0 +1,59 @@
+{
+  "sourceFile": "BID7000672183.PDF",
+  "rfxNo": "7000672183",
+  "plant": "CHN/CH2/044-22326906 18.09.2026 12:17",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH2 / Head CHN pur gr 2 / 044-22326906"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "462711070243",
+      "desc": "CON CIR ACCE HTSHBT ST SS13&15ELASTOMER",
+      "qty": "21",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "HUBER + SUHNER AG-202K-142-25",
+          "make": "HUBER + SUHNER AG",
+          "mpn": "202K-142-25"
+        },
+        {
+          "raw": "HELLERMANN ELECTRIC-155-42-G",
+          "make": "HELLERMANN ELECTRIC",
+          "mpn": "155-42-G"
+        },
+        {
+          "raw": "POLAMCO LTD.-VG 95343 T 06 B 004 A",
+          "make": "POLAMCO LTD.",
+          "mpn": "VG 95343 T 06 B 004 A"
+        },
+        {
+          "raw": "RAYCHEM LTD- 202K142-25-O",
+          "make": "RAYCHEM LTD",
+          "mpn": "202K142-25-O"
+        },
+        {
+          "raw": "RAYCHEM LTD- 202K142-25-0",
+          "make": "RAYCHEM LTD",
+          "mpn": "202K142-25-0"
+        },
+        {
+          "raw": "RAYCHEM LTD-202K-142-25",
+          "make": "RAYCHEM LTD",
+          "mpn": "202K-142-25"
+        },
+        {
+          "raw": "TYCO ELECTRONICS (UK)LTD-202 K-142-25-0",
+          "make": "TYCO ELECTRONICS (UK)LTD",
+          "mpn": "202 K-142-25-0"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

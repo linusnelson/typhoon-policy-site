@@ -1,0 +1,212 @@
+{
+  "sourceFile": "BID7000672691.PDF",
+  "rfxNo": "7000672691",
+  "plant": "CHN/CH1/044-22326906 22.09.2026 10:23",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "463601200152",
+      "desc": "CON RECTU F9/7.5A SHL PLZN CRP",
+      "qty": "10",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "ADI ELECTRONICS INC-M24308/2-6F",
+          "make": "ADI ELECTRONICS INC",
+          "mpn": "M24308/2-6F"
+        },
+        {
+          "raw": "AMPHENOL INTERCONNECT INDIA PVT LTD- M24308/2-6F",
+          "make": "AMPHENOL INTERCONNECT INDIA PVT LTD",
+          "mpn": "M24308/2-6F"
+        },
+        {
+          "raw": "AMPHENOL FCI INDIA PRIVATE LIMITED-SEMAT 09S",
+          "make": "AMPHENOL FCI INDIA PRIVATE LIMITED",
+          "mpn": "SEMAT 09S"
+        },
+        {
+          "raw": "CRISTEK INTERCONNECTS, LLC.-M24308/2-6F",
+          "make": "CRISTEK INTERCONNECTS, LLC.",
+          "mpn": "M24308/2-6F"
+        },
+        {
+          "raw": "CINCH CONNECTIVITY SOLUTIONS-M24308/2-6F",
+          "make": "CINCH CONNECTIVITY SOLUTIONS",
+          "mpn": "M24308/2-6F"
+        },
+        {
+          "raw": "ITT CANNON-M24308/2-6F",
+          "make": "ITT CANNON",
+          "mpn": "M24308/2-6F"
+        },
+        {
+          "raw": "SOURIAU-M24308/2-6F",
+          "make": "SOURIAU",
+          "mpn": "M24308/2-6F"
+        },
+        {
+          "raw": "TYCO ELECTRONICS CORPORATION-M24308/2-6F",
+          "make": "TYCO ELECTRONICS CORPORATION",
+          "mpn": "M24308/2-6F"
+        }
+      ]
+    },
+    {
+      "itemNo": "20",
+      "belPn": "463601200346",
+      "desc": "CON RECTU F25/7.5A SHL PLZN CRP",
+      "qty": "10",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "ADI ELECTRONICS INC-M24308/2-8F",
+          "make": "ADI ELECTRONICS INC",
+          "mpn": "M24308/2-8F"
+        },
+        {
+          "raw": "AMPHENOL INTERCONNECT INDIA PVT LTD- M24308/2-8F",
+          "make": "AMPHENOL INTERCONNECT INDIA PVT LTD",
+          "mpn": "M24308/2-8F"
+        },
+        {
+          "raw": "AMPHENOL FCI INDIA PRIVATE LIMITED-SBMAT 25S",
+          "make": "AMPHENOL FCI INDIA PRIVATE LIMITED",
+          "mpn": "SBMAT 25S"
+        },
+        {
+          "raw": "CRISTEK INTERCONNECTS, LLC.-M24308/2-8F",
+          "make": "CRISTEK INTERCONNECTS, LLC.",
+          "mpn": "M24308/2-8F"
+        },
+        {
+          "raw": "CINCH CONNECTIVITY SOLUTIONS-M24308/2-8F",
+          "make": "CINCH CONNECTIVITY SOLUTIONS",
+          "mpn": "M24308/2-8F"
+        },
+        {
+          "raw": "ITT CANNON-M24308/2-8F",
+          "make": "ITT CANNON",
+          "mpn": "M24308/2-8F"
+        },
+        {
+          "raw": "SOURIAU-M24308/2-8F",
+          "make": "SOURIAU",
+          "mpn": "M24308/2-8F"
+        },
+        {
+          "raw": "TYCO ELECTRONICS CORPORATION-M24308/2-8F",
+          "make": "TYCO ELECTRONICS CORPORATION",
+          "mpn": "M24308/2-8F"
+        }
+      ]
+    },
+    {
+      "itemNo": "30",
+      "belPn": "463601200249",
+      "desc": "CON RECTU F15/7.5A SHL PLZN CRP",
+      "qty": "10",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "ADI ELECTRONICS INC-M24308/2-7F",
+          "make": "ADI ELECTRONICS INC",
+          "mpn": "M24308/2-7F"
+        },
+        {
+          "raw": "AMPHENOL INTERCONNECT INDIA PVT LTD- M24308/2-7F",
+          "make": "AMPHENOL INTERCONNECT INDIA PVT LTD",
+          "mpn": "M24308/2-7F"
+        },
+        {
+          "raw": "AMPHENOL FCI INDIA PRIVATE LIMITED-SAMAT 15S",
+          "make": "AMPHENOL FCI INDIA PRIVATE LIMITED",
+          "mpn": "SAMAT 15S"
+        },
+        {
+          "raw": "CRISTEK INTERCONNECTS, LLC.-M24308/2-7F",
+          "make": "CRISTEK INTERCONNECTS, LLC.",
+          "mpn": "M24308/2-7F"
+        },
+        {
+          "raw": "CINCH CONNECTIVITY SOLUTIONS-M24308/2-7F",
+          "make": "CINCH CONNECTIVITY SOLUTIONS",
+          "mpn": "M24308/2-7F"
+        },
+        {
+          "raw": "ITT CANNON-M24308/2-7F",
+          "make": "ITT CANNON",
+          "mpn": "M24308/2-7F"
+        },
+        {
+          "raw": "SOURIAU-M24308/2-7F",
+          "make": "SOURIAU",
+          "mpn": "M24308/2-7F"
+        },
+        {
+          "raw": "TYCO ELECTRONICS CORPORATION-M24308/2-7F",
+          "make": "TYCO ELECTRONICS CORPORATION",
+          "mpn": "M24308/2-7F"
+        }
+      ]
+    },
+    {
+      "itemNo": "40",
+      "belPn": "463601200443",
+      "desc": "CON RECTU F37/7.5A SHL PLZN CRP",
+      "qty": "10",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "ADI ELECTRONICS INC-M24308/2-9F",
+          "make": "ADI ELECTRONICS INC",
+          "mpn": "M24308/2-9F"
+        },
+        {
+          "raw": "AMPHENOL INTERCONNECT INDIA PVT LTD- M24308/2-9F",
+          "make": "AMPHENOL INTERCONNECT INDIA PVT LTD",
+          "mpn": "M24308/2-9F"
+        },
+        {
+          "raw": "AMPHENOL FCI INDIA PRIVATE LIMITED-SCMAT 37S",
+          "make": "AMPHENOL FCI INDIA PRIVATE LIMITED",
+          "mpn": "SCMAT 37S"
+        },
+        {
+          "raw": "CRISTEK INTERCONNECTS, LLC.-M24308/2-9F",
+          "make": "CRISTEK INTERCONNECTS, LLC.",
+          "mpn": "M24308/2-9F"
+        },
+        {
+          "raw": "CINCH CONNECTIVITY SOLUTIONS-M24308/2-9F",
+          "make": "CINCH CONNECTIVITY SOLUTIONS",
+          "mpn": "M24308/2-9F"
+        },
+        {
+          "raw": "ITT CANNON-M24308/2-9F",
+          "make": "ITT CANNON",
+          "mpn": "M24308/2-9F"
+        },
+        {
+          "raw": "SOURIAU-M24308/2-9F",
+          "make": "SOURIAU",
+          "mpn": "M24308/2-9F"
+        },
+        {
+          "raw": "TYCO ELECTRONICS CORPORATION-M24308/2-9F",
+          "make": "TYCO ELECTRONICS CORPORATION",
+          "mpn": "M24308/2-9F"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

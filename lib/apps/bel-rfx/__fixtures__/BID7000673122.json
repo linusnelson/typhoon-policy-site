@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000673122.PDF",
+  "rfxNo": "7000673122",
+  "plant": "BG/N3/080-22195399 23.09.2026 13:11",
+  "dueDate": "2026-09-29",
+  "endTime": "23:00:00",
+  "contact": [
+    "BEPO / 1120 / Naval System (NS)",
+    "N3 / Hd,NS---Pur(CS) / 080-22195399",
+    "purcs@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "469310950437",
+      "desc": "RELAY SS W/OVP&OTP48-600VAC 90-280V 25A",
+      "qty": "2",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "SENSATA TECHNOLOGIES INC-PM6760A25PTA",
+          "make": "SENSATA TECHNOLOGIES INC",
+          "mpn": "PM6760A25PTA"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID6000026653.PDF",
+  "rfxNo": "6000026653",
+  "plant": "BG/N3/080-22195399 23.09.2026 15:40",
+  "dueDate": "2026-09-25",
+  "endTime": "13:00:00",
+  "contact": [
+    "BEPO / 1120 / Naval System (NS)",
+    "N3 / Hd,NS---Pur(CS) / 080-22195399",
+    "purcs@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "439510570182",
+      "desc": "IC INCLINOMETER/ACCELEROMETE R 16209",
+      "qty": "7",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "ANALOG DEVICES INC-ADIS16209/PCBZ",
+          "make": "ANALOG DEVICES INC",
+          "mpn": "ADIS16209/PCBZ"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

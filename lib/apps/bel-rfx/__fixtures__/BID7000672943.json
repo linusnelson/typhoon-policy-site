@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000672943.PDF",
+  "rfxNo": "7000672943",
+  "plant": "CHN/CH1/044-22326906 22.09.2026 15:39",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "424075060189",
+      "desc": "DIODE TVS 1N5646A",
+      "qty": "21",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "MICROSEMI LAWRENCE-1N5646A",
+          "make": "MICROSEMI LAWRENCE",
+          "mpn": "1N5646A"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

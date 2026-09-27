@@ -1,0 +1,29 @@
+{
+  "sourceFile": "BID7000666464.PDF",
+  "rfxNo": "7000666464",
+  "plant": "CHN/CH2/044-22326906 27.08.2026 12:01",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH2 / Head CHN pur gr 2 / 044-22326906"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "462785140122",
+      "desc": "CAP CIRC CONN 1-3/16\"CNDCTV B",
+      "qty": "150",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "CAPLUGS,-CEC-19",
+          "make": "CAPLUGS",
+          "mpn": "CEC-19"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

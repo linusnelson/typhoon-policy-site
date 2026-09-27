@@ -1,0 +1,54 @@
+{
+  "sourceFile": "BID7000673223.PDF",
+  "rfxNo": "7000673223",
+  "plant": "CHN/CH1/044-22326906 23.09.2026 15:58",
+  "dueDate": "2026-10-01",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "461575881474",
+      "desc": "CON CIRTHD RP F37/3A JMT",
+      "qty": "10",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "FCI OEN CONNECTORS LTD (name change-8D7C 15W35SN",
+          "make": "FCI OEN CONNECTORS LTD (name change",
+          "mpn": "8D7C 15W35SN"
+        },
+        {
+          "raw": "SOURIAU INDIA PRIVATE LIMITED-8D7C15W35SN",
+          "make": "SOURIAU INDIA PRIVATE LIMITED",
+          "mpn": "8D7C15W35SN"
+        }
+      ]
+    },
+    {
+      "itemNo": "20",
+      "belPn": "461575881668",
+      "desc": "CON CIRTHD RP F55/3A JMT",
+      "qty": "10",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "FCI OEN CONNECTORS LTD (name change-8D7C 17W35SN",
+          "make": "FCI OEN CONNECTORS LTD (name change",
+          "mpn": "8D7C 17W35SN"
+        },
+        {
+          "raw": "SOURIAU INDIA PRIVATE LIMITED-8D7C17W35SN",
+          "make": "SOURIAU INDIA PRIVATE LIMITED",
+          "mpn": "8D7C17W35SN"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

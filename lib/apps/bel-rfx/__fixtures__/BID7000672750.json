@@ -1,0 +1,73 @@
+{
+  "sourceFile": "BID7000672750.PDF",
+  "rfxNo": "7000672750",
+  "plant": "CHN/CH1/044-22326906 22.09.2026 11:04",
+  "dueDate": "2026-09-29",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "436375400105",
+      "desc": "IC DIG TRANCEIVER 74LVC4245 TSSOP-24.",
+      "qty": "105",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "AVNET INDIA PVT LTD,-SN74LVC4245APW",
+          "make": "AVNET INDIA PVT LTD",
+          "mpn": "SN74LVC4245APW"
+        },
+        {
+          "raw": "TEXAS INSTRUMENTS INC-SN74LVC4245APW",
+          "make": "TEXAS INSTRUMENTS INC",
+          "mpn": "SN74LVC4245APW"
+        }
+      ]
+    },
+    {
+      "itemNo": "20",
+      "belPn": "439375970266",
+      "desc": "IC DIG FL PNT GSP DC6727BZDHA250",
+      "qty": "60",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "AVNET INDIA PVT LTD,-TMSDC6727BZDHA250",
+          "make": "AVNET INDIA PVT LTD",
+          "mpn": "TMSDC6727BZDHA250"
+        },
+        {
+          "raw": "TEXAS INSTROMENTS-TMSDC6727BZDHA250",
+          "make": "TEXAS INSTROMENTS",
+          "mpn": "TMSDC6727BZDHA250"
+        }
+      ]
+    },
+    {
+      "itemNo": "30",
+      "belPn": "436375440166",
+      "desc": "IC DIG FF D OCTAL 74LVC2574 TSSOP-20PIN",
+      "qty": "24",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "AVNET INDIA PVT LTD,-SN74LVC574APW",
+          "make": "AVNET INDIA PVT LTD",
+          "mpn": "SN74LVC574APW"
+        },
+        {
+          "raw": "TEXAS INSTROMENTS-SN74LVC574APW",
+          "make": "TEXAS INSTROMENTS",
+          "mpn": "SN74LVC574APW"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

@@ -82,8 +82,12 @@ export function parseHeader(lines: Line[]): Header {
   return { rfxNo, plant, dueDate, endTime, contact, notes: parseNotes(lines), warnings };
 }
 
+// Running page header/footer and rule lines inside the RFx text block.
+const PAGE_NOISE_RE = /^(Bid Invitation|Page \d+ \/ \d+|Date : .*|\d{10}|Product no\.|[-=*_]{3,})$/;
+
 // "NOTE ..." lines inside the "RFx text:" block, with their wrapped
-// continuation lines, each note joined into one string.
+// continuation lines, each note joined into one string. The block can run
+// across a page break, so page furniture is skipped rather than ending it.
 export function parseNotes(lines: Line[]): string[] {
   const start = lines.findIndex((l) => l.text === "RFx text:");
   if (start < 0) return [];
@@ -91,7 +95,9 @@ export function parseNotes(lines: Line[]): string[] {
   let current: string | null = null;
   for (let i = start + 1; i < lines.length; i++) {
     const text = lines[i].text.trim();
-    if (TEXT_END_RE.test(text) || lines[i].page !== lines[start].page) break;
+    if (TEXT_END_RE.test(text)) break;
+    // The title and "Page n / m" share a baseline, so test each cell.
+    if (lines[i].cells.every((c) => PAGE_NOISE_RE.test(c.text.trim()))) continue;
     if (/^NOTE\b/i.test(text)) {
       if (current) notes.push(current);
       current = text.replace(/^NOTE\s*[:\-–]?\s*/i, "");

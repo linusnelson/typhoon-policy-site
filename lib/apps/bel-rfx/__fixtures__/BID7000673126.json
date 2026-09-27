@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000673126.PDF",
+  "rfxNo": "7000673126",
+  "plant": "BG/N3/080-22195399 23.09.2026 13:13",
+  "dueDate": "2026-09-29",
+  "endTime": "23:00:00",
+  "contact": [
+    "BEPO / 1120 / Naval System (NS)",
+    "N3 / Hd,NS---Pur(CS) / 080-22195399",
+    "purcs@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "423220340324",
+      "desc": "DIODE PWR RECT ULTRA FAST 150V SMB 315",
+      "qty": "12",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "TAIWAN SEMICONDUCTOR CO.LTD.,-MUR315SBH",
+          "make": "TAIWAN SEMICONDUCTOR CO.LTD.",
+          "mpn": "MUR315SBH"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

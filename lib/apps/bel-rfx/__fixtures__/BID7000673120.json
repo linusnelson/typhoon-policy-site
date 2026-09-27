@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000673120.PDF",
+  "rfxNo": "7000673120",
+  "plant": "BG/N3/080-22195399 23.09.2026 13:09",
+  "dueDate": "2026-09-29",
+  "endTime": "23:00:00",
+  "contact": [
+    "BEPO / 1120 / Naval System (NS)",
+    "N3 / Hd,NS---Pur(CS) / 080-22195399",
+    "purcs@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "475311520302",
+      "desc": "DUAL-IN-LINE PIN HEADERS",
+      "qty": "12",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "PRECIDIP-150-80-316-00-018101",
+          "make": "PRECIDIP",
+          "mpn": "150-80-316-00-018101"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}
