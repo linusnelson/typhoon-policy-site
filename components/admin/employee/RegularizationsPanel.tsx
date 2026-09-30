@@ -1,18 +1,46 @@
 import { listRegularizations } from "@/lib/data/regularization";
+import { listEmployeeRegularizationRequests } from "@/lib/data/regularization-requests";
 import { formatIstDate } from "@/lib/ist";
 import { Badge } from "@/components/ui";
+import { RegularizationRequestList } from "@/components/employee/RegularizationRequestList";
 
 export async function RegularizationsPanel({
   employeeId,
 }: {
   employeeId: string;
 }) {
-  const rows = await listRegularizations(undefined, undefined, employeeId);
+  const [rows, requests] = await Promise.all([
+    listRegularizations(undefined, undefined, employeeId),
+    listEmployeeRegularizationRequests(employeeId),
+  ]);
 
-  if (rows.length === 0) {
-    return <p className="text-sm text-gray-400">No corrections recorded.</p>;
-  }
+  return (
+    <div className="space-y-6">
+      <section>
+        <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-gray-400">
+          Corrections applied
+        </h3>
+        {rows.length === 0 ? (
+          <p className="text-sm text-gray-400">No corrections recorded.</p>
+        ) : (
+          <CorrectionsList rows={rows} />
+        )}
+      </section>
+      <section>
+        <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-gray-400">
+          Requests raised by the employee
+        </h3>
+        <RegularizationRequestList rows={requests} />
+      </section>
+    </div>
+  );
+}
 
+function CorrectionsList({
+  rows,
+}: {
+  rows: Awaited<ReturnType<typeof listRegularizations>>;
+}) {
   return (
     <ul className="divide-y divide-gray-100 rounded-card border border-gray-200">
       {rows.map((r) => {

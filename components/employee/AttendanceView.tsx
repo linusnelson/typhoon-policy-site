@@ -1,11 +1,16 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, PencilRuler } from "lucide-react";
 import { Badge, Card } from "@/components/ui";
-import { formatIstDate } from "@/lib/ist";
+import { formatIstDate, istToday } from "@/lib/ist";
 import {
   getMonthAttendance,
   type AttendanceDay,
 } from "@/lib/data/employee-attendance";
+import {
+  mapMyRequestsByDate,
+  type RegularizationRequestStatus,
+} from "@/lib/data/regularization-requests";
+import { MAX_BACKDATE_DAYS } from "@/lib/engine/regularization-request";
 import {
   collapseQuarters,
   describeParts,
@@ -59,7 +64,15 @@ export async function AttendanceView({
   year: number;
   month: number;
 }) {
-  const { days, stats } = await getMonthAttendance(employeeId, year, month);
+  const fromKey = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const toKey = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+  const [{ days, stats }, requests] = await Promise.all([
+    getMonthAttendance(employeeId, year, month),
+    mapMyRequestsByDate(employeeId, fromKey, toKey),
+  ]);
+  const today = istToday();
+  const earliest = shiftDate(today, -MAX_BACKDATE_DAYS);
 
   const prev = month === 1 ? { y: year - 1, m: 12 } : { y: year, m: month - 1 };
   const next = month === 12 ? { y: year + 1, m: 1 } : { y: year, m: month + 1 };
@@ -67,7 +80,15 @@ export async function AttendanceView({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-2xl font-bold text-ink">Attendance</h1>
+        <div>
+          <h1 className="font-display text-2xl font-bold text-ink">Attendance</h1>
+          <Link
+            href="/attendance/regularization"
+            className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-brand hover:underline"
+          >
+            <PencilRuler className="h-3.5 w-3.5" /> Correction requests
+          </Link>
+        </div>
         <div className="flex items-center gap-2">
           <Link
             href={`/attendance?y=${prev.y}&m=${prev.m}`}
@@ -103,7 +124,12 @@ export async function AttendanceView({
       ) : (
         <Card className="divide-y divide-gray-100">
           {days.map((d) => (
-            <DayRow key={d.date} day={d} />
+            <DayRow
+              key={d.date}
+              day={d}
+              request={requests[d.date] ?? null}
+              canRequest={d.date >= earliest && d.date <= today}
+            />
           ))}
         </Card>
       )}
@@ -111,7 +137,36 @@ export async function AttendanceView({
   );
 }
 
-function DayRow({ day }: { day: AttendanceDay }) {
+function shiftDate(dateKey: string, days: number): string {
+  const d = new Date(`${dateKey}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+const REQ_TONE: Record<RegularizationRequestStatus, "warning" | "success" | "danger" | "neutral"> = {
+  pending: "warning",
+  approved: "success",
+  rejected: "danger",
+  cancelled: "neutral",
+};
+
+// Days an employee is likely to want corrected: nothing/partial recorded, late,
+// or an open punch. Holidays, weekly offs and leave days are left alone.
+function needsCorrection(day: AttendanceDay): boolean {
+  if (day.status === "absent" || day.status === "partial") return true;
+  if (day.isLate || day.isEarlyExit) return true;
+  return day.punchIn !== null && day.punchOut === null;
+}
+
+function DayRow({
+  day,
+  request,
+  canRequest,
+}: {
+  day: AttendanceDay;
+  request: { id: string; status: RegularizationRequestStatus } | null;
+  canRequest: boolean;
+}) {
   return (
     <div className="flex items-center justify-between gap-4 p-4">
       <div className="min-w-0">
@@ -139,11 +194,25 @@ function DayRow({ day }: { day: AttendanceDay }) {
           )}
         </div>
       </div>
-      {day.hours > 0 && (
-        <div className="shrink-0 text-sm tabular-nums text-gray-600">
-          {day.hours.toFixed(1)} h
-        </div>
-      )}
+      <div className="flex shrink-0 items-center gap-3">
+        {day.hours > 0 && (
+          <div className="text-sm tabular-nums text-gray-600">
+            {day.hours.toFixed(1)} h
+          </div>
+        )}
+        {request && request.status === "pending" ? (
+          <Badge tone={REQ_TONE.pending}>Correction pending</Badge>
+        ) : request && request.status === "approved" ? (
+          <Badge tone={REQ_TONE.approved}>Corrected</Badge>
+        ) : canRequest && needsCorrection(day) ? (
+          <Link
+            href={`/attendance/regularization/new?date=${day.date}`}
+            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-brand transition-colors hover:bg-brand-soft"
+          >
+            Request correction
+          </Link>
+        ) : null}
+      </div>
     </div>
   );
 }

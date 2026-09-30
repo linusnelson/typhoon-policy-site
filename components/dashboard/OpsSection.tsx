@@ -4,13 +4,18 @@ import { Badge, Card } from "@/components/ui";
 import { formatIstDate } from "@/lib/ist";
 import { DashboardOverview } from "@/components/admin/DashboardOverview";
 import { listPendingLeave } from "@/lib/data/leave";
+import { countPendingRegularizationRequests } from "@/lib/data/regularization-requests";
+import { PendingCorrectionsRow } from "@/components/dashboard/PendingCorrectionsRow";
 
 // Admin/manager operations block on the dashboard. Reuses the existing live
 // summary (present/absent/late, work-type, by-location, exceptions) and adds a
 // compact pending-approvals preview. RLS scopes everything to the viewer
 // (managers: their department; admins: org-wide).
 export async function OpsSection() {
-  const pending = await listPendingLeave();
+  const [pending, corrections] = await Promise.all([
+    listPendingLeave(),
+    countPendingRegularizationRequests(),
+  ]);
   const preview = pending.slice(0, 4);
 
   return (
@@ -62,6 +67,8 @@ export async function OpsSection() {
           </div>
         )}
       </Card>
+
+      <PendingCorrectionsRow count={corrections} href="/admin/regularization?tab=requests" />
 
       <DashboardOverview />
     </section>

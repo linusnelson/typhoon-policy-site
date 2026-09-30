@@ -3,11 +3,16 @@ import { ArrowRight, CheckSquare } from "lucide-react";
 import { Badge, Card } from "@/components/ui";
 import { formatIstDate } from "@/lib/ist";
 import { listPendingLeave } from "@/lib/data/leave";
+import { countPendingRegularizationRequests } from "@/lib/data/regularization-requests";
+import { PendingCorrectionsRow } from "@/components/dashboard/PendingCorrectionsRow";
 
 // Manager dashboard block: pending leave approvals for the manager's team. RLS
 // (leave_team_routing) already scopes listPendingLeave to their team members.
 export async function ManagerTeamCard() {
-  const pending = await listPendingLeave();
+  const [pending, corrections] = await Promise.all([
+    listPendingLeave(),
+    countPendingRegularizationRequests(),
+  ]);
   const preview = pending.slice(0, 4);
 
   return (
@@ -51,6 +56,8 @@ export async function ManagerTeamCard() {
           </div>
         )}
       </Card>
+
+      <PendingCorrectionsRow count={corrections} href="/team/regularization" />
     </section>
   );
 }

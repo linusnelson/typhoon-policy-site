@@ -117,6 +117,12 @@ const NAV: NavGroup[] = [
     heading: "My team",
     items: [
       { label: "Team Leave", href: "/team/leave", icon: CheckSquare, roles: ["manager"] },
+      {
+        label: "Team Corrections",
+        href: "/team/regularization",
+        icon: PencilRuler,
+        roles: ["manager"],
+      },
       { label: "Team Visits", href: "/team/visits", icon: MapPin, roles: ["manager"] },
       {
         label: "Team Events",

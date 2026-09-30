@@ -43,6 +43,7 @@ const ICONS: Record<string, { icon: LucideIcon; cls: string }> = {
   event_removed: { icon: CalendarRange, cls: "text-gray-400" },
   announcement: { icon: Megaphone, cls: "text-brand" },
   regularization_done: { icon: Wrench, cls: "text-info-deep" },
+  regularization_requested: { icon: Wrench, cls: "text-warning-deep" },
   advance_applied: { icon: Wallet, cls: "text-info-deep" },
   advance_approved: { icon: CheckCircle2, cls: "text-success-deep" },
   advance_rejected: { icon: XCircle, cls: "text-danger-deep" },

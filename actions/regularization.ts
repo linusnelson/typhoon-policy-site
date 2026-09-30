@@ -5,65 +5,11 @@ import { requireAdmin, AuthzError } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { type ActionState, str } from "@/lib/action-utils";
 import { istDayBoundsUtc } from "@/lib/ist";
-
-type Admin = Awaited<ReturnType<typeof createAdminClient>>;
-
-// Admin enters time as IST wall-clock; store the matching UTC instant.
-function istWallClockToUtc(dateKey: string, hhmm: string): string {
-  return new Date(`${dateKey}T${hhmm}:00+05:30`).toISOString();
-}
-
-function fmtDisplay(dateKey: string): string {
-  return new Date(`${dateKey}T00:00:00Z`).toLocaleDateString("en-IN", {
-    timeZone: "UTC",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-async function upsertPunch(
-  supabase: Admin,
-  args: {
-    employeeId: string;
-    orgId: string;
-    dateKey: string;
-    punchType: "in" | "out";
-    time: string; // HH:MM
-    workType: string;
-  }
-) {
-  const punchedAt = istWallClockToUtc(args.dateKey, args.time);
-  const { startUtc, endUtc } = istDayBoundsUtc(args.dateKey);
-  const nowIso = new Date().toISOString();
-
-  const { data: existing } = await supabase
-    .from("attendance_punches")
-    .select("id")
-    .eq("employee_id", args.employeeId)
-    .eq("punch_type", args.punchType)
-    .gte("punched_at", startUtc)
-    .lt("punched_at", endUtc);
-
-  if (existing && existing.length > 0) {
-    await supabase
-      .from("attendance_punches")
-      .update({ punched_at: punchedAt, work_type: args.workType, synced_at: nowIso })
-      .eq("id", existing[0].id);
-  } else {
-    await supabase.from("attendance_punches").insert({
-      employee_id: args.employeeId,
-      org_id: args.orgId,
-      punch_type: args.punchType,
-      work_type: args.workType,
-      punched_at: punchedAt,
-      synced_at: nowIso,
-    });
-  }
-}
+import { applyPunchCorrection, fmtDisplayDate } from "@/lib/regularization/apply";
 
 // Correct an employee's punch-in (and optionally punch-out) for a date.
-// Mirrors clock_bays correctPunch.
+// Mirrors clock_bays correctPunch. The write itself lives in
+// lib/regularization/apply.ts, shared with request approval.
 export async function correctPunch(
   _prev: ActionState,
   formData: FormData
@@ -89,51 +35,17 @@ export async function correctPunch(
     };
   }
 
-  const supabase = createAdminClient();
-
-  await upsertPunch(supabase, {
+  const result = await applyPunchCorrection(createAdminClient(), {
     employeeId,
     orgId: admin.org_id,
-    dateKey: punchDate,
-    punchType: "in",
-    time: correctedIn,
+    punchDate,
+    correctedIn,
+    correctedOut,
     workType,
+    reason,
+    correctedBy: admin.id,
   });
-  if (correctedOut) {
-    await upsertPunch(supabase, {
-      employeeId,
-      orgId: admin.org_id,
-      dateKey: punchDate,
-      punchType: "out",
-      time: correctedOut,
-      workType,
-    });
-  }
-
-  const { data: log, error } = await supabase
-    .from("regularization_log")
-    .insert({
-      employee_id: employeeId,
-      org_id: admin.org_id,
-      punch_date: punchDate,
-      corrected_in: `${correctedIn}:00`,
-      corrected_out: correctedOut ? `${correctedOut}:00` : null,
-      work_type: workType,
-      reason,
-      corrected_by: admin.id,
-    })
-    .select("id")
-    .single();
-  if (error || !log) return { ok: false, error: error?.message ?? "Failed." };
-
-  await supabase.from("notifications").insert({
-    employee_id: employeeId,
-    org_id: admin.org_id,
-    title: "Attendance Corrected",
-    body: `Your punch for ${fmtDisplay(punchDate)} has been corrected by admin.`,
-    type: "regularization_done",
-    reference_id: log.id,
-  });
+  if ("error" in result) return { ok: false, error: result.error };
 
   revalidatePath("/admin/regularization");
   return { ok: true, message: "Punch corrected." };
@@ -189,7 +101,7 @@ export async function markAbsent(
     employee_id: employeeId,
     org_id: admin.org_id,
     title: "Attendance Updated",
-    body: `You were marked absent for ${fmtDisplay(punchDate)} by admin.`,
+    body: `You were marked absent for ${fmtDisplayDate(punchDate)} by admin.`,
     type: "regularization_done",
     reference_id: log.id,
   });
