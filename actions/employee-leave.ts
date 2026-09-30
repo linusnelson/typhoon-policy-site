@@ -495,10 +495,18 @@ export async function applyMyLeave(
   if (insErr || !inserted)
     return { ok: false, error: insErr?.message ?? "Could not submit leave." };
 
+  // getCurrentEmployee() never selects team_id, so the cast below always read
+  // undefined and the team manager was never notified — look it up.
+  const { data: applicant } = await supabase
+    .from("employees")
+    .select("team_id")
+    .eq("id", me.id)
+    .maybeSingle();
+
   await notifyApprovers(supabase, {
     applicantId: me.id,
     applicantName: me.name,
-    teamId: (me as { team_id?: string | null }).team_id ?? null,
+    teamId: (applicant?.team_id as string | null | undefined) ?? null,
     orgId: me.org_id,
     requestId: inserted.id,
     startDate,

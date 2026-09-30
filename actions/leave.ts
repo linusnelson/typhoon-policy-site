@@ -32,6 +32,19 @@ function parseQuarterSlot(
   return { slot: n };
 }
 
+// A manager must never review their own request (RLS also forbids it via the
+// employee_id <> auth_employee_id() clause, but that guard only exists once
+// 20260601000000_leave_team_routing is applied — keep the rule in code too).
+// Admins may review an admin's own leave, as in clock_bays.
+function assertNotSelfReview(
+  reviewer: { id: string; role: string },
+  employeeId: string
+): void {
+  if (reviewer.role !== "admin" && employeeId === reviewer.id) {
+    throw new AuthzError("You cannot review your own leave request.");
+  }
+}
+
 function revalidate() {
   revalidatePath("/admin/leave");
   revalidatePath("/team/leave"); // manager register reads the same rows
@@ -54,6 +67,7 @@ export async function approveLeave(formData: FormData): Promise<void> {
     .eq("id", id)
     .single();
   if (!req) throw new Error("Leave request not found.");
+  assertNotSelfReview(reviewer, req.employee_id);
 
   const { data: updated } = await supabase
     .from("leave_requests")
@@ -116,6 +130,7 @@ export async function rejectLeave(formData: FormData): Promise<void> {
     .eq("id", id)
     .single();
   if (!req) throw new Error("Leave request not found.");
+  assertNotSelfReview(reviewer, req.employee_id);
 
   const { data: updated } = await supabase
     .from("leave_requests")

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentEmployee } from "@/lib/policies";
 import { istToday } from "@/lib/ist";
 import { fyStartYearFromKey } from "@/lib/leave-year";
 import type { LeaveStatus } from "@/lib/leave-status";
@@ -109,6 +110,12 @@ async function matchingEmployeeIds(
 // may see (admins: org-wide, every status; managers: their own team), so the
 // same function backs /admin/leave and /team/leave.
 //
+// A manager's OWN request is also visible to them through the "own rows" arm of
+// the SELECT policy, but the UPDATE policy forbids self-approval — without this
+// filter it sat in their approval queue with Approve/Reject buttons that fail
+// on click. Admins keep seeing everything: an admin's own leave is still
+// approvable by an admin (mirrors clock_bays LeaveRepository.pendingRequests).
+//
 // Reviewer names need a second query: leave_requests has two FKs into employees
 // (employee_id, reviewed_by), so PostgREST can't embed both in one select —
 // same workaround as lib/data/expenses.ts.
@@ -122,6 +129,9 @@ export async function listLeaveRegister(
   if (employeeIds !== null && employeeIds.length === 0) return [];
 
   let query = supabase.from("leave_requests").select(SELECT);
+
+  const viewer = await getCurrentEmployee();
+  if (viewer?.role === "manager") query = query.neq("employee_id", viewer.id);
 
   if (statuses && statuses.length > 0) query = query.in("status", statuses);
   // Overlap, not containment: a leave straddling the window still belongs to it.
@@ -206,9 +216,12 @@ export async function listPendingLeave(): Promise<PendingLeaveRow[]> {
 /** Pending count for the tab badge. RLS-scoped like the list itself. */
 export async function countPendingLeave(): Promise<number> {
   const supabase = await createClient();
-  const { count } = await supabase
+  let query = supabase
     .from("leave_requests")
     .select("id", { count: "exact", head: true })
     .eq("status", "pending");
+  const viewer = await getCurrentEmployee();
+  if (viewer?.role === "manager") query = query.neq("employee_id", viewer.id);
+  const { count } = await query;
   return count ?? 0;
 }

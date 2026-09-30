@@ -209,15 +209,20 @@ function LeaveRow({
   );
 }
 
+// `viewer` lets the list hide Approve/Reject on the viewer's own request unless
+// they are an admin (the data layer already drops a manager's own row, this is
+// the belt-and-braces for the admin "All" tab and any future caller).
 export function LeaveRegisterList({
   rows,
   canApprove = true,
   canManage = false,
+  viewer,
   emptyMessage = "No leave requests here.",
 }: {
   rows: LeaveRegisterRow[];
   canApprove?: boolean;
   canManage?: boolean;
+  viewer?: { id: string; role: string };
   emptyMessage?: string;
 }) {
   if (rows.length === 0) {
@@ -228,9 +233,18 @@ export function LeaveRegisterList({
 
   return (
     <div className="space-y-3">
-      {rows.map((r) => (
-        <LeaveRow key={r.id} r={r} canApprove={canApprove} canManage={canManage} />
-      ))}
+      {rows.map((r) => {
+        const own = viewer !== undefined && r.employee_id === viewer.id;
+        const selfBlocked = own && viewer?.role !== "admin";
+        return (
+          <LeaveRow
+            key={r.id}
+            r={r}
+            canApprove={canApprove && !selfBlocked}
+            canManage={canManage}
+          />
+        );
+      })}
     </div>
   );
 }

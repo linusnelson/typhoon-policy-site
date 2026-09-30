@@ -19,7 +19,7 @@ export default async function TeamLeavePage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  await requireManagerView();
+  const viewer = await requireManagerView();
   const sp = await searchParams;
   const tab = sp.tab === "approved" || sp.tab === "all" ? sp.tab : "pending";
 
@@ -50,6 +50,7 @@ export default async function TeamLeavePage({
         rows={rows}
         canApprove={tab === "pending"}
         canManage={false}
+        viewer={viewer}
         emptyMessage={
           tab === "pending"
             ? "No pending leave requests from your team."
