@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Check, X, CalendarDays, Paperclip, User } from "lucide-react";
+import { CalendarDays, Paperclip, User } from "lucide-react";
 import { Badge, Card } from "@/components/ui";
+import { ReviewSubmitButton } from "./ReviewSubmitButton";
 import { formatIstDate, formatIstDateTime, istToday } from "@/lib/ist";
 import { approveLeave, rejectLeave } from "@/actions/leave";
 import type { LeaveRegisterRow } from "@/lib/data/leave";
@@ -89,21 +90,11 @@ function LeaveRow({
             <>
               <form action={rejectLeave}>
                 <input type="hidden" name="id" value={r.id} />
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-ink hover:border-ink"
-                >
-                  <X className="h-4 w-4" /> Reject
-                </button>
+                <ReviewSubmitButton kind="reject" />
               </form>
               <form action={approveLeave}>
                 <input type="hidden" name="id" value={r.id} />
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-brand-fg shadow-sm hover:bg-brand-hover"
-                >
-                  <Check className="h-4 w-4" /> Approve
-                </button>
+                <ReviewSubmitButton kind="approve" />
               </form>
             </>
           )}

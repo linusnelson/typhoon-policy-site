@@ -55,6 +55,9 @@ export async function approveLeave(formData: FormData): Promise<void> {
     .single();
   if (!req) throw new Error("Leave request not found.");
 
+  // Only a still-pending request flips to approved. A repeat submit (double
+  // click, slow revalidate) matches no row, so the balance below is never
+  // deducted twice.
   const { data: updated } = await supabase
     .from("leave_requests")
     .update({
@@ -63,9 +66,11 @@ export async function approveLeave(formData: FormData): Promise<void> {
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", id)
+    .eq("status", "pending")
     .select("id");
 
   if (!updated || updated.length === 0) {
+    if (await isAlreadyReviewed(supabase, id)) return revalidate();
     throw new AuthzError(
       "Unable to approve — your account may not manage this employee."
     );
@@ -103,6 +108,21 @@ export async function approveLeave(formData: FormData): Promise<void> {
   revalidate();
 }
 
+// True when the request exists and is no longer pending — i.e. a status-guarded
+// update matched nothing because another submit already reviewed it, not
+// because RLS hid the row.
+async function isAlreadyReviewed(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  id: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("leave_requests")
+    .select("status")
+    .eq("id", id)
+    .maybeSingle();
+  return !!data && data.status !== "pending";
+}
+
 export async function rejectLeave(formData: FormData): Promise<void> {
   const reviewer = await requireAdminOrManager();
   const id = str(formData, "id");
@@ -125,9 +145,11 @@ export async function rejectLeave(formData: FormData): Promise<void> {
       reviewed_at: new Date().toISOString(),
     })
     .eq("id", id)
+    .eq("status", "pending")
     .select("id");
 
   if (!updated || updated.length === 0) {
+    if (await isAlreadyReviewed(supabase, id)) return revalidate();
     throw new AuthzError(
       "Unable to reject — your account may not manage this employee."
     );
@@ -171,8 +193,12 @@ export async function adminCancelLeave(formData: FormData): Promise<void> {
     .from("leave_requests")
     .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
     .eq("id", id)
+    // Status still what we read — a repeat cancel matches no row and never
+    // restores the balance twice.
+    .eq("status", req.status)
     .select("id");
   if (!updated || updated.length === 0) {
+    if (await isAlreadyReviewed(supabase, id)) return revalidate();
     throw new AuthzError("Unable to cancel this request.");
   }
 

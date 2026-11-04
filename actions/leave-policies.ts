@@ -66,14 +66,15 @@ export async function saveLeavePolicy(
   // Reflect the policy change in employee balances (skip unlimited types).
   if (!isUnlimited) {
     try {
-      if (effectiveDate && accrualType === "monthly") {
-        await recalculateBalancesFromDate(supabase, {
-          orgId: admin.org_id,
-          leaveTypeId,
-          effectiveDate,
-          accrualPerMonth,
-          annualQuota,
+      if (accrualType === "monthly") {
+        // One accrual rule for every path (cron, Flutter, here): in advance,
+        // joining month pro-rated, from the later of joining date / policy
+        // effective date / 1 April, plus admin adjustments. See migration
+        // clock_bays 20261104000000_leave_balance_integrity.
+        const { error: rpcErr } = await supabase.rpc("recalc_monthly_leave_accrual", {
+          p_org: admin.org_id,
         });
+        if (rpcErr) throw new Error(rpcErr.message);
       } else {
         await ensureBalancesExist(supabase, {
           orgId: admin.org_id,
@@ -208,106 +209,3 @@ async function ensureBalancesExist(
   if (error) throw new Error(error.message);
 }
 
-// Recalculates balances as if `accrualPerMonth` had accrued each month since
-// `effectiveDate`, capped at the annual quota. Never lowers earned below what
-// an employee has already used.
-async function recalculateBalancesFromDate(
-  supabase: Db,
-  opts: {
-    orgId: string;
-    leaveTypeId: string;
-    effectiveDate: string;
-    accrualPerMonth: number;
-    annualQuota: number;
-  }
-): Promise<void> {
-  const now = new Date();
-  const year = fyStartYearFromDate(now);
-  const eff = new Date(opts.effectiveDate + "T00:00:00");
-  if (now < eff) return;
-
-  const monthsAccrued =
-    (now.getFullYear() - eff.getFullYear()) * 12 +
-    (now.getMonth() - eff.getMonth()) +
-    1;
-
-  const newEarned = Math.min(
-    opts.accrualPerMonth * monthsAccrued,
-    opts.annualQuota
-  );
-
-  const { data: empRows } = await supabase
-    .from("employees")
-    .select("id")
-    .eq("org_id", opts.orgId)
-    .eq("status", "active")
-    .neq("role", "admin")
-    .eq("is_service_account", false);
-  const allEmpIds = new Set(((empRows as { id: string }[]) ?? []).map((r) => r.id));
-  if (allEmpIds.size === 0) return;
-
-  const { data: existingRows } = await supabase
-    .from("leave_balances")
-    .select("id, employee_id, used")
-    .in("employee_id", [...allEmpIds])
-    .eq("leave_type_id", opts.leaveTypeId)
-    .eq("year", year);
-
-  const existingByEmp = new Map(
-    ((existingRows as { id: string; employee_id: string; used: number | null }[]) ?? []).map(
-      (r) => [r.employee_id, r]
-    )
-  );
-
-  const toInsert: Record<string, unknown>[] = [];
-  const toUpdateNormal: string[] = [];
-  const toUpdateCapped: { id: string; earned: number }[] = [];
-
-  for (const empId of allEmpIds) {
-    const existing = existingByEmp.get(empId);
-    if (!existing) {
-      toInsert.push({
-        employee_id: empId,
-        leave_type_id: opts.leaveTypeId,
-        annual_quota: opts.annualQuota,
-        used: 0,
-        earned: newEarned,
-        carried_forward: 0,
-        year,
-      });
-    } else {
-      const used = existing.used ?? 0;
-      if (newEarned >= used) {
-        toUpdateNormal.push(existing.id);
-      } else {
-        toUpdateCapped.push({ id: existing.id, earned: used });
-      }
-    }
-  }
-
-  if (toInsert.length > 0) {
-    const { error } = await supabase
-      .from("leave_balances")
-      .upsert(toInsert, {
-        onConflict: "employee_id,leave_type_id,year",
-        ignoreDuplicates: true,
-      });
-    if (error) throw new Error(error.message);
-  }
-
-  if (toUpdateNormal.length > 0) {
-    const { error } = await supabase
-      .from("leave_balances")
-      .update({ earned: newEarned, annual_quota: opts.annualQuota })
-      .in("id", toUpdateNormal);
-    if (error) throw new Error(error.message);
-  }
-
-  for (const row of toUpdateCapped) {
-    const { error } = await supabase
-      .from("leave_balances")
-      .update({ earned: row.earned, annual_quota: opts.annualQuota })
-      .eq("id", row.id);
-    if (error) throw new Error(error.message);
-  }
-}

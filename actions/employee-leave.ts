@@ -220,11 +220,16 @@ export async function cancelMyLeave(formData: FormData): Promise<void> {
 
   const wasApproved = req.status === "approved";
 
-  const { error: updErr } = await supabase
+  // Guarded on the status we read: a repeat cancel matches no row and must
+  // not restore the balance a second time.
+  const { data: updRows, error: updErr } = await supabase
     .from("leave_requests")
     .update({ status: "cancelled", cancelled_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("status", req.status)
+    .select("id");
   if (updErr) throw new Error(updErr.message);
+  if (!updRows || updRows.length === 0) return;
 
   // Restore the balance only if it had been approved (already deducted).
   if (wasApproved && req.leave_type_id) {
