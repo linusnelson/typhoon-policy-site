@@ -1,0 +1,37 @@
+{
+  "sourceFile": "BID7000679712.PDF",
+  "rfxNo": "7000679712",
+  "plant": "BG/D2/080 22195738 23.10.2026 09:56",
+  "dueDate": "2026-10-30",
+  "endTime": "23:00:00",
+  "contact": [
+    "BEPO / 1182 / Central Material Control (CMC)",
+    "D2 / Head Central Pur. / 080 22195738",
+    "d2purcmm@bel.co.in"
+  ],
+  "notes": [
+    "1. FOR MIL COMPONENTS, OEM's COC/TEST REPORT WITH BATCH CODE TO BE PROVIDED BY VENDOR. SPECIFICALLY FOR WIRES, CABLES & SLEEVES BOTH OEM's COC & TEST REPORT WITH BATCH CODE TO BE PROVIDED BY VENDOR."
+  ],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "471301100310",
+      "desc": "SWITCH TGL DP MIL-G 5A@28VDC ON-NONE-ON",
+      "qty": "4",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "EATON CORP / AEROSPACE & COMM CONTR-M83731/10- 231",
+          "make": "EATON CORP / AEROSPACE & COMM CONTR",
+          "mpn": "M83731/10- 231"
+        },
+        {
+          "raw": "ITT INDUSTRIES/C&K SWITCH PRODUCT-M83731/10-231",
+          "make": "ITT INDUSTRIES/C&K SWITCH PRODUCT",
+          "mpn": "M83731/10-231"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

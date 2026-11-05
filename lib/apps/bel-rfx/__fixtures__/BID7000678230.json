@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000678230.PDF",
+  "rfxNo": "7000678230",
+  "plant": "BG/N6/080-22195035 14.10.2026 11:11",
+  "dueDate": "2026-10-21",
+  "endTime": "08:00:00",
+  "contact": [
+    "BEPO / 1190 / NS (R & FCS)",
+    "N6 / Hd, NS(R & FCS)Pur / 080-22195035",
+    "purrs@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "471810970140",
+      "desc": "SWITCH SLIDE SMD DIP SPDT 50mA@24VDC 5PN",
+      "qty": "11",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "CTS CORPORATION-204-125ST",
+          "make": "CTS CORPORATION",
+          "mpn": "204-125ST"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

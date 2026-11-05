@@ -1,0 +1,30 @@
+{
+  "sourceFile": "BID7000677655.PDF",
+  "rfxNo": "7000677655",
+  "plant": "CHN/CH1/044-22326906 12.10.2026 16:02",
+  "dueDate": "2026-10-21",
+  "endTime": "10:00:00",
+  "contact": [
+    "BEPO / 1210 / Chennai BEL Plant",
+    "CH1 / Head CHN pur gr 1 / 044-22326906",
+    "mmbechn@bel.co.in"
+  ],
+  "notes": [],
+  "items": [
+    {
+      "itemNo": "10",
+      "belPn": "471700200214",
+      "desc": "SWITCH SENS SPDT-DB 5A@28VDC TUR-TERM",
+      "qty": "156",
+      "unit": "NO",
+      "makes": [
+        {
+          "raw": "OTTO-B3-22141",
+          "make": "OTTO",
+          "mpn": "B3-22141"
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

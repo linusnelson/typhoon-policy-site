@@ -19,7 +19,9 @@ const SKIP_RE = [
   /^Product no\.$/,
   /^Quantity$/,
   /^\d{10}$/, // RFx number in the running page header
-  /@/, // recipient e-mail list
+  // Recipient e-mail list at the foot of the table. Anchored to the line start:
+  // descriptions contain "@" too ("SWITCH TGL DP MIL-G 5A@28VDC ON-NONE-ON").
+  /^[^\s@]+@[^\s@]+\.[a-z]{2,}/i,
 ];
 const QTY_RE = /^([\d,.]+)\s+([A-Z]{1,4})$/;
 const TIME_RE = /^\d{2}:\d{2}:\d{2}$/;
