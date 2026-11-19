@@ -1,0 +1,5548 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "BillForge",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/me": {
+      "get": {
+        "summary": "Me",
+        "operationId": "me_api_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Principal"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs": {
+      "post": {
+        "summary": "Create Job Endpoint",
+        "operationId": "create_job_endpoint_api_jobs_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_create_job_endpoint_api_jobs_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobQueued"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List Jobs",
+        "description": "History, and the duplicate-invoice lookup behind the FR8 warning.\n\n`invoice_no` stays an exact-match lookup \u2014 it answers \"was this invoice processed\nbefore\", which is a different question from the `q` search box.",
+        "operationId": "list_jobs_api_jobs_get",
+        "parameters": [
+          {
+            "name": "invoice_no",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Invoice No"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "title": "Tag"
+            }
+          },
+          {
+            "name": "match",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "all",
+              "title": "Match"
+            }
+          },
+          {
+            "name": "job_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}": {
+      "patch": {
+        "summary": "Rename Job",
+        "description": "Rename a batch. Allowed in any status \u2014 a name is metadata, not output.",
+        "operationId": "rename_job_api_jobs__job_id__patch",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobPayload"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "Get Job",
+        "operationId": "get_job_api_jobs__job_id__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/report": {
+      "get": {
+        "summary": "Get Report",
+        "operationId": "get_report_api_jobs__job_id__report_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorReport"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/files": {
+      "get": {
+        "summary": "List Files",
+        "operationId": "list_files_api_jobs__job_id__files_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/files/{name}": {
+      "get": {
+        "summary": "Download One",
+        "description": "A single generated file.\n\n`name` must be a key of the job's artifact manifest. The job directory also holds\nthe uploaded PDFs, the report, and the raw AI request/response logs; serving from\nthe manifest rather than the directory is what keeps those unreachable.",
+        "operationId": "download_one_api_jobs__job_id__files__name__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/download": {
+      "get": {
+        "summary": "Download",
+        "description": "The batch as a zip, optionally narrowed to chosen files.\n\nChoosing files is a packaging decision, not a partial result: every artifact is\nstill generated and kept. Selecting everything (or nothing) serves the archive the\nrun already built, so the common path stays byte-identical to what it produced.",
+        "operationId": "download_api_jobs__job_id__download_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "file",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "title": "File"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/hsn-gaps": {
+      "get": {
+        "summary": "Hsn Gaps",
+        "description": "Parts whose HSN is blank or still provisional, with any remembered code.\n\nA remembered code is offered as a *suggestion* with its own provenance shown \u2014 it is\nnever pre-applied as though somebody had typed it.",
+        "operationId": "hsn_gaps_api_jobs__job_id__hsn_gaps_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HsnGaps"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/regenerate": {
+      "post": {
+        "summary": "Regenerate",
+        "description": "Re-run a completed batch from its stored extractions, optionally filling HSNs.\n\nCosts no tokens: every document is replayed from the extraction cache. The source\njob is superseded, never modified \u2014 its CSVs are already in Zoho.",
+        "operationId": "regenerate_api_jobs__job_id__regenerate_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobQueuedWithCalls"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/resolve": {
+      "post": {
+        "summary": "Resolve",
+        "description": "Settle a blocked batch's reader disagreements and run it again.\n\nOnly disagreements about a line's manufacturer or description can be settled, and\nevery blocking finding must be: anything else (a quantity, a price, a part number,\na tariff code) stays a hard block. The answers are checked against the blocked\njob's own report, recorded with the caller's name, and applied to a new job that\nreplays the stored extractions, so it costs no tokens. The blocked job is kept.",
+        "operationId": "resolve_api_jobs__job_id__resolve_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobQueuedWithCalls"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/attach-boe": {
+      "post": {
+        "summary": "Attach Boe",
+        "description": "Attach a late-arriving Bill of Entry to a batch that was processed without one.\n\nThe invoices are replayed from the source batch's stored PDFs, so only the BOE is\nsent to the model. The result supersedes the source job and carries an Items Update\nCSV for exactly the parts whose HSN the BOE changed (FR12).",
+        "operationId": "attach_boe_api_jobs__job_id__attach_boe_post",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_attach_boe_api_jobs__job_id__attach_boe_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobQueuedWithCalls"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/tags": {
+      "put": {
+        "summary": "Set Tags",
+        "description": "Replace the batch's user tags. Pipeline-applied tags are left alone.",
+        "operationId": "set_tags_api_jobs__job_id__tags_put",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagNames"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/tags/{slug}": {
+      "delete": {
+        "summary": "Remove Tag",
+        "operationId": "remove_tag_api_jobs__job_id__tags__slug__delete",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/trace": {
+      "get": {
+        "summary": "Job Trace",
+        "description": "Everything needed to answer \"why did this batch produce that\".\n\nAvailable for **every** status, deliberately \u2014 unlike the file endpoints, which\nrequire `done`. A failed run is exactly the one you most need to read back, and\nrefusing to trace it would leave the raw model response reachable only by logging\nin to the host.",
+        "operationId": "job_trace_api_jobs__job_id__trace_get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Trace"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/jobs/{job_id}/trace/{name}": {
+      "get": {
+        "summary": "Job Trace Log",
+        "description": "One raw AI request or response, as this run recorded it.\n\n`name` is matched against the job's log index before any path is built from it, so\nthe uploaded PDFs and the generated CSVs sitting in the same directory stay\nunreachable through this route.",
+        "operationId": "job_trace_log_api_jobs__job_id__trace__name__get",
+        "parameters": [
+          {
+            "name": "job_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job Id"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tags": {
+      "get": {
+        "summary": "List Tags",
+        "operationId": "list_tags_api_tags_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagCountList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/tags/{slug}": {
+      "patch": {
+        "summary": "Rename Tag",
+        "description": "Rename a tag everywhere it is used.",
+        "operationId": "rename_tag_api_tags__slug__patch",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Slug"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagRename"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/item-master": {
+      "get": {
+        "summary": "Get Item Master",
+        "operationId": "get_item_master_api_item_master_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemMaster"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Upload Item Master",
+        "description": "Replace the item-master snapshot with one Zoho org's item export.\n\n`org_id` names the org the export came from; omitted, it is the default org (the\noldest active one), which is what every upload before the org model meant.",
+        "operationId": "upload_item_master_api_item_master_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_item_master_api_item_master_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemMasterUpload"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/hsn-memory": {
+      "get": {
+        "summary": "Hsn Memory",
+        "operationId": "hsn_memory_api_hsn_memory_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Hsn Memory Api Hsn Memory Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents": {
+      "post": {
+        "summary": "Create Documents",
+        "description": "Group purchase orders into RE-numbered sales invoices.\n\nSeveral groups in one call, because that is how the work actually arrives \u2014 a\nsession's worth is two or three invoices, each covering a few consignments.\n\nAll or nothing: if any group is refused, none is written. A partly applied grouping\nleaves purchase orders invoiced that nobody meant to invoice, and D02 would then\nrefuse to put them right.",
+        "operationId": "create_documents_api_documents_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDocuments"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DocumentsPreview"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CreatedDocuments"
+                    }
+                  ],
+                  "title": "Response Create Documents Api Documents Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "summary": "List Documents",
+        "operationId": "list_documents_api_documents_get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{document_id}": {
+      "get": {
+        "summary": "Get Document",
+        "operationId": "get_document_api_documents__document_id__get",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{document_id}/files/{name}": {
+      "get": {
+        "summary": "Download Document File",
+        "description": "One generated file, allow-listed by the document's manifest.",
+        "operationId": "download_document_file_api_documents__document_id__files__name__get",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Document Id"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/documents/{document_id}/mirror": {
+      "post": {
+        "summary": "Mirror Document",
+        "description": "Produce the counterpart bill for the buying organisation.",
+        "operationId": "mirror_document_api_documents__document_id__mirror_post",
+        "parameters": [
+          {
+            "name": "document_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Document Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentPayload"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/activity": {
+      "get": {
+        "summary": "Activity Log",
+        "description": "Who did what, and when. Written since v1 and, until now, read by nothing.",
+        "operationId": "activity_log_api_activity_get",
+        "parameters": [
+          {
+            "name": "user",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Action"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityLog"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos": {
+      "get": {
+        "summary": "List Pos",
+        "description": "The purchase-order register \u2014 the list of work in flight.",
+        "operationId": "list_pos_api_pos_get",
+        "parameters": [
+          {
+            "name": "stage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "title": "Stage"
+            }
+          },
+          {
+            "name": "vendor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "default": [],
+              "title": "Vendor"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "has_boe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Has Boe"
+            }
+          },
+          {
+            "name": "hsn",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Hsn"
+            }
+          },
+          {
+            "name": "invoiceable",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Invoiceable"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "date",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "desc",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Desc"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 500,
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/{po_number}": {
+      "get": {
+        "summary": "Get Po",
+        "description": "One purchase order, with everything needed to explain where it is.",
+        "operationId": "get_po_api_pos__po_number__get",
+        "parameters": [
+          {
+            "name": "po_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Po Number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update Po",
+        "operationId": "update_po_api_pos__po_number__patch",
+        "parameters": [
+          {
+            "name": "po_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Po Number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PoNote"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrder"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/bulk/stage": {
+      "post": {
+        "summary": "Set Po Stages",
+        "description": "Move several purchase orders at once, all or nothing.\n\nAll-or-nothing matters here: a partially applied bulk move leaves the register in a\nstate nobody asked for and nobody can tell apart from a bug.",
+        "operationId": "set_po_stages_api_pos_bulk_stage_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkStageChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PoBulkResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/{po_number}/stage": {
+      "post": {
+        "summary": "Set Po Stage",
+        "description": "Move a purchase order by hand. The note is required \u2014 see services/pos.py.",
+        "operationId": "set_po_stage_api_pos__po_number__stage_post",
+        "parameters": [
+          {
+            "name": "po_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Po Number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StageChange"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrder"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pos/{po_number}/zoho-imported": {
+      "post": {
+        "summary": "Mark Po Imported",
+        "description": "Record that a generated file actually reached Zoho, or undo that mark.",
+        "operationId": "mark_po_imported_api_pos__po_number__zoho_imported_post",
+        "parameters": [
+          {
+            "name": "po_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Po Number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportMark"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PurchaseOrder"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orgs": {
+      "get": {
+        "summary": "List Orgs",
+        "operationId": "list_orgs_api_orgs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Org"
+                  },
+                  "type": "array",
+                  "title": "Response List Orgs Api Orgs Get"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Org",
+        "operationId": "create_org_api_orgs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrgBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Org"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orgs/{org_id}": {
+      "patch": {
+        "summary": "Update Org",
+        "operationId": "update_org_api_orgs__org_id__patch",
+        "parameters": [
+          {
+            "name": "org_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Org Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrgBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Org"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/relationships": {
+      "get": {
+        "summary": "List Relationships",
+        "operationId": "list_relationships_api_relationships_get",
+        "parameters": [
+          {
+            "name": "seller_org_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Seller Org Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Relationship"
+                  },
+                  "title": "Response List Relationships Api Relationships Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Relationship",
+        "operationId": "create_relationship_api_relationships_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationshipBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Relationship"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/relationships/{relationship_id}": {
+      "patch": {
+        "summary": "Update Relationship",
+        "operationId": "update_relationship_api_relationships__relationship_id__patch",
+        "parameters": [
+          {
+            "name": "relationship_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Relationship Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RelationshipBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Relationship"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "summary": "Config Summary",
+        "description": "What the UI needs to label things, straight from business.yaml.",
+        "operationId": "config_summary_api_config_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Config Summary Api Config Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActivityEntry": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "user",
+          "action",
+          "detail"
+        ],
+        "title": "ActivityEntry"
+      },
+      "ActivityLog": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityEntry"
+            },
+            "type": "array",
+            "title": "Entries"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "actions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Actions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "entries",
+          "total",
+          "actions"
+        ],
+        "title": "ActivityLog"
+      },
+      "Blocker": {
+        "properties": {
+          "rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule",
+          "message",
+          "action"
+        ],
+        "title": "Blocker",
+        "description": "Why a purchase order cannot move on yet (`po_service.blockers`)."
+      },
+      "Body_attach_boe_api_jobs__job_id__attach_boe_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "hsn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_attach_boe_api_jobs__job_id__attach_boe_post"
+      },
+      "Body_create_job_endpoint_api_jobs_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_create_job_endpoint_api_jobs_post"
+      },
+      "Body_upload_item_master_api_item_master_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_upload_item_master_api_item_master_post"
+      },
+      "BulkStageChange": {
+        "properties": {
+          "po_numbers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Po Numbers"
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "po_numbers",
+          "stage"
+        ],
+        "title": "BulkStageChange"
+      },
+      "CreateDocuments": {
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceGroup"
+            },
+            "type": "array",
+            "title": "Groups"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "groups"
+        ],
+        "title": "CreateDocuments"
+      },
+      "CreatedDocuments": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentPayload"
+            },
+            "type": "array",
+            "title": "Documents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documents"
+        ],
+        "title": "CreatedDocuments"
+      },
+      "DocumentDetail": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "doc_date": {
+            "type": "string",
+            "title": "Doc Date"
+          },
+          "counterparty_name": {
+            "type": "string",
+            "title": "Counterparty Name"
+          },
+          "counterparty_gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counterparty Gstin"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "exchange_rate": {
+            "type": "string",
+            "title": "Exchange Rate"
+          },
+          "price_rule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriceRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/DocumentTotals"
+          },
+          "mirrors_document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mirrors Document Id"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "relationship_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Id"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "purchase_orders": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Purchase Orders"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentFile"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ErrorReport"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "number",
+          "doc_date",
+          "counterparty_name",
+          "counterparty_gstin",
+          "currency",
+          "exchange_rate",
+          "price_rule",
+          "status",
+          "totals",
+          "mirrors_document_id",
+          "org",
+          "relationship_id",
+          "created_at",
+          "created_by",
+          "purchase_orders",
+          "files",
+          "report"
+        ],
+        "title": "DocumentDetail"
+      },
+      "DocumentFile": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "bytes",
+          "sha256"
+        ],
+        "title": "DocumentFile"
+      },
+      "DocumentList": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentPayload"
+            },
+            "type": "array",
+            "title": "Documents"
+          },
+          "kinds": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Kinds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documents",
+          "kinds"
+        ],
+        "title": "DocumentList"
+      },
+      "DocumentPayload": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "doc_date": {
+            "type": "string",
+            "title": "Doc Date"
+          },
+          "counterparty_name": {
+            "type": "string",
+            "title": "Counterparty Name"
+          },
+          "counterparty_gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counterparty Gstin"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "exchange_rate": {
+            "type": "string",
+            "title": "Exchange Rate"
+          },
+          "price_rule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriceRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/DocumentTotals"
+          },
+          "mirrors_document_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mirrors Document Id"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "relationship_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Id"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "purchase_orders": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Purchase Orders"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentFile"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "number",
+          "doc_date",
+          "counterparty_name",
+          "counterparty_gstin",
+          "currency",
+          "exchange_rate",
+          "price_rule",
+          "status",
+          "totals",
+          "mirrors_document_id",
+          "org",
+          "relationship_id",
+          "created_at",
+          "created_by",
+          "purchase_orders",
+          "files"
+        ],
+        "title": "DocumentPayload",
+        "description": "`_document_payload`."
+      },
+      "DocumentTotals": {
+        "properties": {
+          "subtotal": {
+            "type": "string",
+            "title": "Subtotal"
+          },
+          "lines": {
+            "type": "integer",
+            "title": "Lines"
+          },
+          "pos": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Pos"
+          }
+        },
+        "type": "object",
+        "title": "DocumentTotals",
+        "description": "`Document.totals_json`; `{}` for a row that has none."
+      },
+      "DocumentsPreview": {
+        "properties": {
+          "dry_run": {
+            "type": "boolean",
+            "const": true,
+            "title": "Dry Run"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/GroupPreview"
+            },
+            "type": "array",
+            "title": "Groups"
+          },
+          "seller_org": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "buyer_org": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "dry_run",
+          "groups",
+          "seller_org",
+          "buyer_org"
+        ],
+        "title": "DocumentsPreview",
+        "description": "The dry-run answer: per-group previews plus the pair, reported once at the top."
+      },
+      "ErrorReport": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/RuleResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "results"
+        ],
+        "title": "ErrorReport",
+        "description": "A pipeline `ErrorReport` after `model_dump(mode=\"json\")`."
+      },
+      "FileList": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/JobFile"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "FileList"
+      },
+      "GroupPreview": {
+        "properties": {
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "purchase_orders": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Purchase Orders"
+          },
+          "relationship_id": {
+            "type": "string",
+            "title": "Relationship Id"
+          },
+          "seller_org": {
+            "$ref": "#/components/schemas/OrgRef"
+          },
+          "buyer_org": {
+            "$ref": "#/components/schemas/OrgRef"
+          },
+          "lines": {
+            "type": "integer",
+            "title": "Lines"
+          },
+          "subtotal": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subtotal"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/RuleResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "date",
+          "purchase_orders",
+          "relationship_id",
+          "seller_org",
+          "buyer_org",
+          "lines",
+          "subtotal",
+          "results",
+          "ok"
+        ],
+        "title": "GroupPreview",
+        "description": "What a dry run says about one group before anything is written."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HsnGap": {
+        "properties": {
+          "part": {
+            "type": "string",
+            "title": "Part"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "hsn": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hsn"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "supplier_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supplier Code"
+          },
+          "suggestion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HsnSuggestion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "part",
+          "description",
+          "hsn",
+          "source",
+          "supplier_code",
+          "suggestion"
+        ],
+        "title": "HsnGap"
+      },
+      "HsnGaps": {
+        "properties": {
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/HsnGap"
+            },
+            "type": "array",
+            "title": "Gaps"
+          },
+          "boe_present": {
+            "type": "boolean",
+            "title": "Boe Present"
+          },
+          "invoices_without_boe": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Invoices Without Boe"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gaps",
+          "boe_present",
+          "invoices_without_boe"
+        ],
+        "title": "HsnGaps"
+      },
+      "HsnSuggestion": {
+        "properties": {
+          "hsn": {
+            "type": "string",
+            "title": "Hsn"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "hsn",
+          "source"
+        ],
+        "title": "HsnSuggestion"
+      },
+      "HsnTax": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "rate": {
+            "type": "integer",
+            "title": "Rate"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "rate"
+        ],
+        "title": "HsnTax",
+        "description": "One `TaxRule`, as `RelationshipContext.as_dict` dumps it per HSN prefix."
+      },
+      "ImportMark": {
+        "properties": {
+          "which": {
+            "type": "string",
+            "title": "Which"
+          },
+          "imported": {
+            "type": "boolean",
+            "title": "Imported",
+            "default": true
+          }
+        },
+        "type": "object",
+        "required": [
+          "which"
+        ],
+        "title": "ImportMark"
+      },
+      "InvoiceGroup": {
+        "properties": {
+          "number": {
+            "type": "string",
+            "title": "Number"
+          },
+          "date": {
+            "type": "string",
+            "format": "date",
+            "title": "Date"
+          },
+          "po_numbers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Po Numbers"
+          },
+          "relationship_id": {
+            "type": "string",
+            "title": "Relationship Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "number",
+          "date",
+          "po_numbers",
+          "relationship_id"
+        ],
+        "title": "InvoiceGroup"
+      },
+      "InvoiceSummary": {
+        "properties": {
+          "invoice_no": {
+            "type": "string",
+            "title": "Invoice No"
+          },
+          "vendor": {
+            "type": "string",
+            "title": "Vendor"
+          },
+          "invoice_date": {
+            "type": "string",
+            "title": "Invoice Date"
+          },
+          "fbil_rate": {
+            "type": "string",
+            "title": "Fbil Rate"
+          },
+          "boe_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boe No"
+          },
+          "line_count": {
+            "type": "integer",
+            "title": "Line Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "invoice_no",
+          "vendor",
+          "invoice_date",
+          "fbil_rate",
+          "boe_no",
+          "line_count"
+        ],
+        "title": "InvoiceSummary"
+      },
+      "ItemMaster": {
+        "properties": {
+          "items": {
+            "additionalProperties": {
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "object",
+            "title": "Items"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "org"
+        ],
+        "title": "ItemMaster"
+      },
+      "ItemMasterUpload": {
+        "properties": {
+          "items": {
+            "type": "integer",
+            "title": "Items"
+          },
+          "org": {
+            "$ref": "#/components/schemas/OrgRef"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "org"
+        ],
+        "title": "ItemMasterUpload"
+      },
+      "JobDetail": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "supersedes_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Job Id"
+          },
+          "failure_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Message"
+          },
+          "timings": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timings"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/JobFile"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          },
+          "invoices": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceSummary"
+            },
+            "type": "array",
+            "title": "Invoices"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "name",
+          "status",
+          "mode",
+          "org",
+          "tags",
+          "created_at",
+          "created_by",
+          "provider",
+          "model",
+          "supersedes_job_id",
+          "failure_message",
+          "timings",
+          "files",
+          "usage",
+          "invoices",
+          "summary"
+        ],
+        "title": "JobDetail",
+        "description": "GET /api/jobs/{id}: the payload plus the reconciliation summary."
+      },
+      "JobFile": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "duplicate_handling": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicate Handling"
+          },
+          "order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Order"
+          },
+          "bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "label",
+          "duplicate_handling",
+          "order",
+          "bytes",
+          "sha256"
+        ],
+        "title": "JobFile",
+        "description": "`_file_payload` \u2014 one generated file with its Zoho import instructions."
+      },
+      "JobList": {
+        "properties": {
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/JobPayload"
+            },
+            "type": "array",
+            "title": "Jobs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "jobs"
+        ],
+        "title": "JobList"
+      },
+      "JobPatch": {
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "title": "JobPatch"
+      },
+      "JobPayload": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "supersedes_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Job Id"
+          },
+          "failure_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Message"
+          },
+          "timings": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timings"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/JobFile"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/Usage"
+          },
+          "invoices": {
+            "items": {
+              "$ref": "#/components/schemas/InvoiceSummary"
+            },
+            "type": "array",
+            "title": "Invoices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "name",
+          "status",
+          "mode",
+          "org",
+          "tags",
+          "created_at",
+          "created_by",
+          "provider",
+          "model",
+          "supersedes_job_id",
+          "failure_message",
+          "timings",
+          "files",
+          "usage",
+          "invoices"
+        ],
+        "title": "JobPayload",
+        "description": "`_job_payload` \u2014 a batch as history, rename and the run page list it."
+      },
+      "JobQueued": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "status"
+        ],
+        "title": "JobQueued"
+      },
+      "JobQueuedWithCalls": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "model_calls": {
+            "type": "integer",
+            "title": "Model Calls"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "status",
+          "model_calls"
+        ],
+        "title": "JobQueuedWithCalls",
+        "description": "Regenerate / attach-BOE: how many documents go to a model (a floor, see the route)."
+      },
+      "Org": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "legal_name": {
+            "type": "string",
+            "title": "Legal Name"
+          },
+          "gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
+          "iec": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iec"
+          },
+          "pan": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pan"
+          },
+          "state_code": {
+            "type": "string",
+            "title": "State Code"
+          },
+          "gst_treatment": {
+            "type": "string",
+            "title": "Gst Treatment"
+          },
+          "default_branch": {
+            "type": "string",
+            "title": "Default Branch"
+          },
+          "default_warehouse": {
+            "type": "string",
+            "title": "Default Warehouse"
+          },
+          "sales_number_pattern": {
+            "type": "string",
+            "title": "Sales Number Pattern"
+          },
+          "tax_group_inter_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Group Inter State"
+          },
+          "tax_group_intra_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Group Intra State"
+          },
+          "account_sales": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Sales"
+          },
+          "account_purchase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Purchase"
+          },
+          "account_inventory": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Inventory"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          },
+          "effective": {
+            "$ref": "#/components/schemas/OrgEffective"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "slug",
+          "display_name",
+          "legal_name",
+          "gstin",
+          "iec",
+          "pan",
+          "state_code",
+          "gst_treatment",
+          "default_branch",
+          "default_warehouse",
+          "sales_number_pattern",
+          "tax_group_inter_state",
+          "tax_group_intra_state",
+          "account_sales",
+          "account_purchase",
+          "account_inventory",
+          "is_active",
+          "effective"
+        ],
+        "title": "Org",
+        "description": "`OrgContext.as_dict`."
+      },
+      "OrgBody": {
+        "properties": {
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "legal_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legal Name"
+          },
+          "gstin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gstin"
+          },
+          "iec": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iec"
+          },
+          "state_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Code"
+          },
+          "gst_treatment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gst Treatment"
+          },
+          "default_branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Branch"
+          },
+          "default_warehouse": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Warehouse"
+          },
+          "sales_number_pattern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sales Number Pattern"
+          },
+          "tax_group_inter_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Group Inter State"
+          },
+          "tax_group_intra_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Group Intra State"
+          },
+          "account_sales": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Sales"
+          },
+          "account_purchase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Purchase"
+          },
+          "account_inventory": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Account Inventory"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "OrgBody",
+        "description": "Create or patch an organisation. Every field optional at the model level; the\nservice decides what a POST requires, so a PATCH can send only what changed."
+      },
+      "OrgEffective": {
+        "properties": {
+          "tax_group_inter_state": {
+            "type": "string",
+            "title": "Tax Group Inter State"
+          },
+          "tax_group_intra_state": {
+            "type": "string",
+            "title": "Tax Group Intra State"
+          },
+          "account_sales": {
+            "type": "string",
+            "title": "Account Sales"
+          },
+          "account_purchase": {
+            "type": "string",
+            "title": "Account Purchase"
+          },
+          "account_inventory": {
+            "type": "string",
+            "title": "Account Inventory"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tax_group_inter_state",
+          "tax_group_intra_state",
+          "account_sales",
+          "account_purchase",
+          "account_inventory"
+        ],
+        "title": "OrgEffective",
+        "description": "`EffectiveNames.as_dict` \u2014 the five Zoho-side names with overrides resolved."
+      },
+      "OrgRef": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "OrgRef",
+        "description": "`OrgContext.brief` / `_org_brief` \u2014 the issuing org as jobs, POs and documents carry it."
+      },
+      "PoBulkResult": {
+        "properties": {
+          "purchase_orders": {
+            "items": {
+              "$ref": "#/components/schemas/PurchaseOrder"
+            },
+            "type": "array",
+            "title": "Purchase Orders"
+          }
+        },
+        "type": "object",
+        "required": [
+          "purchase_orders"
+        ],
+        "title": "PoBulkResult"
+      },
+      "PoDetail": {
+        "properties": {
+          "po_number": {
+            "type": "string",
+            "title": "Po Number"
+          },
+          "vendor": {
+            "type": "string",
+            "title": "Vendor"
+          },
+          "invoice_date": {
+            "type": "string",
+            "title": "Invoice Date"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "goods_total": {
+            "type": "string",
+            "title": "Goods Total"
+          },
+          "line_count": {
+            "type": "integer",
+            "title": "Line Count"
+          },
+          "fbil_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fbil Rate"
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "boe_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boe No"
+          },
+          "hsn_blank_count": {
+            "type": "integer",
+            "title": "Hsn Blank Count"
+          },
+          "hsn_flagged_count": {
+            "type": "integer",
+            "title": "Hsn Flagged Count"
+          },
+          "current_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Job Id"
+          },
+          "latest_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Job Id"
+          },
+          "latest_run_failed": {
+            "type": "boolean",
+            "title": "Latest Run Failed"
+          },
+          "invoiceable": {
+            "type": "boolean",
+            "title": "Invoiceable"
+          },
+          "zoho_po_imported_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zoho Po Imported At"
+          },
+          "zoho_bill_imported_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zoho Bill Imported At"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/Blocker"
+            },
+            "type": "array",
+            "title": "Blockers"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/PoStageEvent"
+            },
+            "type": "array",
+            "title": "History"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/PoJob"
+            },
+            "type": "array",
+            "title": "Jobs"
+          }
+        },
+        "type": "object",
+        "required": [
+          "po_number",
+          "vendor",
+          "invoice_date",
+          "currency",
+          "goods_total",
+          "line_count",
+          "fbil_rate",
+          "stage",
+          "boe_no",
+          "hsn_blank_count",
+          "hsn_flagged_count",
+          "current_job_id",
+          "latest_job_id",
+          "latest_run_failed",
+          "invoiceable",
+          "zoho_po_imported_at",
+          "zoho_bill_imported_at",
+          "note",
+          "org",
+          "updated_at",
+          "blockers",
+          "history",
+          "jobs"
+        ],
+        "title": "PoDetail"
+      },
+      "PoJob": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/JobFile"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "name",
+          "status",
+          "mode",
+          "created_at",
+          "created_by",
+          "files"
+        ],
+        "title": "PoJob",
+        "description": "A batch as the purchase-order detail lists it."
+      },
+      "PoList": {
+        "properties": {
+          "purchase_orders": {
+            "items": {
+              "$ref": "#/components/schemas/PurchaseOrder"
+            },
+            "type": "array",
+            "title": "Purchase Orders"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "stages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Stages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "purchase_orders",
+          "total",
+          "limit",
+          "offset",
+          "stages"
+        ],
+        "title": "PoList"
+      },
+      "PoNote": {
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "title": "PoNote"
+      },
+      "PoStageEvent": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "title": "At"
+          },
+          "user": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User"
+          },
+          "from_stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Stage"
+          },
+          "to_stage": {
+            "type": "string",
+            "title": "To Stage"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Id"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "user",
+          "from_stage",
+          "to_stage",
+          "source",
+          "job_id",
+          "note"
+        ],
+        "title": "PoStageEvent",
+        "description": "`_event_payload`."
+      },
+      "PriceRule": {
+        "properties": {
+          "multiplier": {
+            "type": "string",
+            "title": "Multiplier"
+          },
+          "places": {
+            "type": "integer",
+            "title": "Places"
+          }
+        },
+        "type": "object",
+        "required": [
+          "multiplier",
+          "places"
+        ],
+        "title": "PriceRule",
+        "description": "A pipeline `PriceRule` after `model_dump(mode=\"json\")`."
+      },
+      "Principal": {
+        "properties": {
+          "employee_id": {
+            "type": "string",
+            "title": "Employee Id"
+          },
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "is_admin": {
+            "type": "boolean",
+            "title": "Is Admin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "email",
+          "name",
+          "role",
+          "is_admin"
+        ],
+        "title": "Principal",
+        "description": "`Principal.as_dict` \u2014 who the bearer token resolved to."
+      },
+      "PurchaseOrder": {
+        "properties": {
+          "po_number": {
+            "type": "string",
+            "title": "Po Number"
+          },
+          "vendor": {
+            "type": "string",
+            "title": "Vendor"
+          },
+          "invoice_date": {
+            "type": "string",
+            "title": "Invoice Date"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "goods_total": {
+            "type": "string",
+            "title": "Goods Total"
+          },
+          "line_count": {
+            "type": "integer",
+            "title": "Line Count"
+          },
+          "fbil_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fbil Rate"
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "boe_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Boe No"
+          },
+          "hsn_blank_count": {
+            "type": "integer",
+            "title": "Hsn Blank Count"
+          },
+          "hsn_flagged_count": {
+            "type": "integer",
+            "title": "Hsn Flagged Count"
+          },
+          "current_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Job Id"
+          },
+          "latest_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Job Id"
+          },
+          "latest_run_failed": {
+            "type": "boolean",
+            "title": "Latest Run Failed"
+          },
+          "invoiceable": {
+            "type": "boolean",
+            "title": "Invoiceable"
+          },
+          "zoho_po_imported_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zoho Po Imported At"
+          },
+          "zoho_bill_imported_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zoho Bill Imported At"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "org": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrgRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updated_at": {
+            "type": "string",
+            "title": "Updated At"
+          },
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/Blocker"
+            },
+            "type": "array",
+            "title": "Blockers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "po_number",
+          "vendor",
+          "invoice_date",
+          "currency",
+          "goods_total",
+          "line_count",
+          "fbil_rate",
+          "stage",
+          "boe_no",
+          "hsn_blank_count",
+          "hsn_flagged_count",
+          "current_job_id",
+          "latest_job_id",
+          "latest_run_failed",
+          "invoiceable",
+          "zoho_po_imported_at",
+          "zoho_bill_imported_at",
+          "note",
+          "org",
+          "updated_at",
+          "blockers"
+        ],
+        "title": "PurchaseOrder",
+        "description": "`_po_payload` \u2014 one register row."
+      },
+      "ReaderAnswer": {
+        "properties": {
+          "invoice": {
+            "type": "string",
+            "title": "Invoice"
+          },
+          "line": {
+            "type": "integer",
+            "title": "Line"
+          },
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "invoice",
+          "line",
+          "field",
+          "value"
+        ],
+        "title": "ReaderAnswer",
+        "description": "Which of a finding's two readings is right. `value` must be one of them."
+      },
+      "ReaderChoice": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "part_number": {
+            "type": "string",
+            "title": "Part Number"
+          },
+          "printed": {
+            "type": "string",
+            "title": "Printed"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          }
+        },
+        "type": "object",
+        "required": [
+          "field",
+          "part_number",
+          "printed",
+          "model"
+        ],
+        "title": "ReaderChoice",
+        "description": "The two readings of a maker or description a person may choose between (R02)."
+      },
+      "RegenerateRequest": {
+        "properties": {
+          "hsn": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Hsn",
+            "default": {}
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "title": "RegenerateRequest"
+      },
+      "Relationship": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "seller_org_id": {
+            "type": "string",
+            "title": "Seller Org Id"
+          },
+          "buyer_org_id": {
+            "type": "string",
+            "title": "Buyer Org Id"
+          },
+          "customer_name_in_seller_org": {
+            "type": "string",
+            "title": "Customer Name In Seller Org"
+          },
+          "vendor_name_in_buyer_org": {
+            "type": "string",
+            "title": "Vendor Name In Buyer Org"
+          },
+          "usd_multiplier": {
+            "type": "string",
+            "title": "Usd Multiplier"
+          },
+          "payment_terms_days": {
+            "type": "integer",
+            "title": "Payment Terms Days"
+          },
+          "carry_tax": {
+            "type": "boolean",
+            "title": "Carry Tax"
+          },
+          "item_tax_by_hsn": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/HsnTax"
+            },
+            "type": "object",
+            "title": "Item Tax By Hsn"
+          },
+          "is_active": {
+            "type": "boolean",
+            "title": "Is Active"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "seller_org_id",
+          "buyer_org_id",
+          "customer_name_in_seller_org",
+          "vendor_name_in_buyer_org",
+          "usd_multiplier",
+          "payment_terms_days",
+          "carry_tax",
+          "item_tax_by_hsn",
+          "is_active"
+        ],
+        "title": "Relationship",
+        "description": "`RelationshipContext.as_dict`."
+      },
+      "RelationshipBody": {
+        "properties": {
+          "seller_org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seller Org Id"
+          },
+          "buyer_org_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Buyer Org Id"
+          },
+          "customer_name_in_seller_org": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer Name In Seller Org"
+          },
+          "vendor_name_in_buyer_org": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vendor Name In Buyer Org"
+          },
+          "usd_multiplier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Usd Multiplier"
+          },
+          "payment_terms_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Terms Days"
+          },
+          "carry_tax": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carry Tax"
+          },
+          "item_tax_by_hsn": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Tax By Hsn"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "RelationshipBody"
+      },
+      "ResolveRequest": {
+        "properties": {
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/ReaderAnswer"
+            },
+            "type": "array",
+            "title": "Answers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "answers"
+        ],
+        "title": "ResolveRequest"
+      },
+      "RuleResult": {
+        "properties": {
+          "rule": {
+            "type": "string",
+            "title": "Rule"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/Severity"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "invoice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invoice"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "expected": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected"
+          },
+          "found": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Found"
+          },
+          "hint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hint"
+          },
+          "resolve": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReaderChoice"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "rule",
+          "severity",
+          "message",
+          "invoice",
+          "line",
+          "expected",
+          "found",
+          "hint"
+        ],
+        "title": "RuleResult",
+        "description": "A pipeline `RuleResult` after `model_dump(mode=\"json\")`."
+      },
+      "Severity": {
+        "type": "string",
+        "enum": [
+          "FAIL",
+          "WARN",
+          "INFO"
+        ],
+        "title": "Severity"
+      },
+      "StageChange": {
+        "properties": {
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "type": "object",
+        "required": [
+          "stage"
+        ],
+        "title": "StageChange"
+      },
+      "Tag": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "system": {
+            "type": "boolean",
+            "title": "System"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "slug",
+          "system"
+        ],
+        "title": "Tag",
+        "description": "`_tag_payload`."
+      },
+      "TagCountList": {
+        "properties": {
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagWithCount"
+            },
+            "type": "array",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tags"
+        ],
+        "title": "TagCountList"
+      },
+      "TagList": {
+        "properties": {
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            },
+            "type": "array",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tags"
+        ],
+        "title": "TagList"
+      },
+      "TagNames": {
+        "properties": {
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tags"
+        ],
+        "title": "TagNames"
+      },
+      "TagRename": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "TagRename"
+      },
+      "TagWithCount": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug"
+          },
+          "system": {
+            "type": "boolean",
+            "title": "System"
+          },
+          "job_count": {
+            "type": "integer",
+            "title": "Job Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "slug",
+          "system",
+          "job_count"
+        ],
+        "title": "TagWithCount"
+      },
+      "Trace": {
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "title": "Job Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "mode": {
+            "type": "string",
+            "title": "Mode"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "failure_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Message"
+          },
+          "supersedes_job_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Job Id"
+          },
+          "timings": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "type": "object",
+            "title": "Timings"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/TraceDocument"
+            },
+            "type": "array",
+            "title": "Documents"
+          },
+          "logs": {
+            "items": {
+              "$ref": "#/components/schemas/TraceLog"
+            },
+            "type": "array",
+            "title": "Logs"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/RuleResult"
+            },
+            "type": "array",
+            "title": "Results"
+          },
+          "invoices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Invoices"
+          }
+        },
+        "type": "object",
+        "required": [
+          "job_id",
+          "name",
+          "status",
+          "mode",
+          "provider",
+          "model",
+          "created_at",
+          "created_by",
+          "failure_message",
+          "supersedes_job_id",
+          "timings",
+          "documents",
+          "logs",
+          "results",
+          "invoices"
+        ],
+        "title": "Trace"
+      },
+      "TraceDocument": {
+        "properties": {
+          "document": {
+            "type": "string",
+            "title": "Document"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "cached": {
+            "type": "boolean",
+            "title": "Cached"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens"
+          },
+          "cache_read_tokens": {
+            "type": "integer",
+            "title": "Cache Read Tokens"
+          },
+          "cost_inr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Inr"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "schema_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Version"
+          },
+          "pdf_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document",
+          "kind",
+          "provider",
+          "model",
+          "cached",
+          "input_tokens",
+          "output_tokens",
+          "cache_read_tokens",
+          "cost_inr",
+          "prompt_version",
+          "schema_version",
+          "pdf_sha256"
+        ],
+        "title": "TraceDocument",
+        "description": "`trace.documents` \u2014 one row per document the run handled."
+      },
+      "TraceLog": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "event": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event"
+          },
+          "bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bytes"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At"
+          },
+          "present": {
+            "type": "boolean",
+            "title": "Present"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "manifest",
+              "scan"
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "event",
+          "bytes",
+          "at",
+          "present",
+          "source"
+        ],
+        "title": "TraceLog",
+        "description": "`trace.log_index` \u2014 one raw AI request/response file."
+      },
+      "Usage": {
+        "properties": {
+          "calls": {
+            "type": "integer",
+            "title": "Calls"
+          },
+          "replayed": {
+            "type": "integer",
+            "title": "Replayed"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens"
+          },
+          "cost_usd": {
+            "type": "string",
+            "title": "Cost Usd"
+          },
+          "cost_inr": {
+            "type": "string",
+            "title": "Cost Inr"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/UsageDocument"
+            },
+            "type": "array",
+            "title": "Documents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "calls",
+          "replayed",
+          "documents"
+        ],
+        "title": "Usage",
+        "description": "`_usage_payload`. A batch with no usage rows omits the token and cost totals."
+      },
+      "UsageDocument": {
+        "properties": {
+          "document": {
+            "type": "string",
+            "title": "Document"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "cached": {
+            "type": "boolean",
+            "title": "Cached"
+          },
+          "input_tokens": {
+            "type": "integer",
+            "title": "Input Tokens"
+          },
+          "output_tokens": {
+            "type": "integer",
+            "title": "Output Tokens"
+          },
+          "cost_inr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Inr"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document",
+          "kind",
+          "model",
+          "cached",
+          "input_tokens",
+          "output_tokens",
+          "cost_inr"
+        ],
+        "title": "UsageDocument"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

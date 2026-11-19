@@ -8,6 +8,20 @@ import type { NextConfig } from "next";
 //   script/style 'unsafe-inline': Next injects inline bootstrap scripts and
 //                Tailwind inline styles without nonces. Tightening this to a
 //                nonce-based policy is the remaining CSP hardening step.
+//   connect-src also lists the BillForge API: that application's pages call
+//                their own backend straight from the browser (lib/apps/bill-forge/api.ts).
+const BILLFORGE_API_ORIGIN = originOf(
+  process.env.NEXT_PUBLIC_BILLFORGE_API_URL || "http://localhost:8000"
+);
+
+function originOf(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return "";
+  }
+}
+
 const CSP = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -18,7 +32,7 @@ const CSP = [
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
   "script-src 'self' 'unsafe-inline'",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co ${BILLFORGE_API_ORIGIN}`.trim(),
 ].join("; ");
 
 const SECURITY_HEADERS = [

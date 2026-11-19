@@ -20,7 +20,7 @@ export interface AppDef {
 
 export const PRICE_COMPARATOR_SLUG = "price-comparator";
 export const BEL_RFX_SLUG = "bel-rfx";
-export const DOC_GEN_SLUG = "doc-gen";
+export const BILL_FORGE_SLUG = "bill-forge";
 
 export const APPS: AppDef[] = [
   {
@@ -36,12 +36,10 @@ export const APPS: AppDef[] = [
       "Turn BEL Bid Invitation PDFs into tracking-sheet rows: RFx, plant, due date, BEL PN, make, MPN, qty.",
   },
   {
-    slug: DOC_GEN_SLUG,
-    name: "Raphael DocGen",
+    slug: BILL_FORGE_SLUG,
+    name: "BillForge",
     description:
       "Supplier invoice PDFs and Bills of Entry into Zoho Books import files — purchase orders, bills, sales invoices and their mirror bills.",
-    // Unset/empty env -> undefined -> launcher falls back to appHref (404s like any un-built app).
-    href: process.env.NEXT_PUBLIC_DOCGEN_URL || undefined,
   },
 ];
 
